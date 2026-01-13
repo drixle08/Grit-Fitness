@@ -1,9 +1,9 @@
-﻿<!doctype html>
+<!doctype html>
 <html lang="en">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta name="theme-color" content="#10181c" />
+    <meta name="theme-color" content="#0b1316" />
     <link rel="manifest" href="/manifest.webmanifest" />
     <link rel="icon" href="/assets/icons/icon-192.png" />
     <title>Grit Fitness</title>
@@ -12,64 +12,92 @@
   <body>
     <div class="app-shell">
       <header class="app-header">
-        <div>
+        <div class="app-title">
           <p class="eyebrow">Grit Fitness</p>
-          <h1>Own the day, not the app.</h1>
+          <h1 id="page-title">Today</h1>
         </div>
         <div class="header-actions">
-          <button class="ghost" id="share-app" type="button">Share App</button>
-          <button class="primary" id="install-app" type="button" hidden>Install</button>
+          <button class="ghost icon-button" id="header-back" type="button" hidden>Back</button>
+          <button class="ghost icon-button" type="button" data-route-jump="settings">Settings</button>
         </div>
       </header>
 
       <main class="app-main">
-        <section class="route" data-route="dashboard">
-          <div class="card">
-            <h2>Today at a glance</h2>
-            <div class="grid-2">
-              <div class="metric">
-                <p>Steps</p>
-                <h3 id="today-steps">0</h3>
-                <span id="today-steps-meta">Goal 0 | Streak 0</span>
+        <section class="route" data-route="today">
+          <div class="card hero">
+            <div class="card-header">
+              <div>
+                <p class="eyebrow">Fasting</p>
+                <h2 id="today-fast-status">Not fasting</h2>
+                <p id="today-fast-elapsed">--</p>
               </div>
-              <div class="metric">
-                <p>Fasting</p>
-                <h3 id="today-fast">Not fasting</h3>
-                <span id="today-fast-meta">Next window --</span>
+              <button class="ghost" type="button" data-route-jump="fasting">Details</button>
+            </div>
+            <div class="hero-meta">
+              <span class="pill" id="today-fast-mode">16:8</span>
+              <span class="muted" id="today-fast-next">Next window --</span>
+            </div>
+            <button class="primary" type="button" data-action="toggle-fast" data-fast-toggle id="today-fast-toggle">Start fast</button>
+          </div>
+
+          <div class="card compact">
+            <div class="card-header">
+              <div>
+                <h2>Steps</h2>
+                <p class="muted" id="today-steps-meta">Goal 0 | Streak 0</p>
               </div>
-              <div class="metric">
-                <p>Calisthenics</p>
-                <h3 id="today-workout">No session yet</h3>
-                <span id="today-workout-meta">Last session --</span>
-              </div>
-              <div class="metric">
-                <p>Weight</p>
-                <h3 id="today-weight">--</h3>
-                <span id="today-weight-meta">Trend --</span>
-              </div>
+              <div class="stat" id="today-steps">0</div>
+            </div>
+            <div class="progress">
+              <div class="progress-bar" id="today-steps-bar"></div>
             </div>
           </div>
 
           <div class="card">
-            <h2>Quick actions</h2>
-            <div class="actions">
-              <button class="primary" data-action="log-steps">Log steps</button>
-              <button class="primary" data-action="toggle-fast">Start fast</button>
-              <button class="primary" data-action="log-weight">Log weight</button>
-              <button class="primary" data-action="start-workout">Start workout</button>
+            <div class="card-header">
+              <div>
+                <h2>Workout</h2>
+                <p id="today-workout">No session yet</p>
+                <p class="muted" id="today-workout-meta">Last session --</p>
+              </div>
+              <button class="ghost" type="button" data-action="start-workout">Start</button>
             </div>
           </div>
 
           <div class="card">
+            <div class="card-header">
+              <div>
+                <h2>Weight</h2>
+                <p id="today-weight">--</p>
+                <p class="muted" id="today-weight-meta">Trend --</p>
+              </div>
+              <button class="ghost" type="button" data-route-jump="weight">Log</button>
+            </div>
+          </div>
+
+          <div class="card tone-soft" id="today-focus-card">
             <h2>Today focus</h2>
-            <p id="today-focus">Set your focus in Profile to personalize daily guidance.</p>
+            <p id="today-focus">Set your focus in Settings to personalize daily guidance.</p>
+          </div>
+
+          <div class="card" id="today-nudges-card" hidden>
+            <h2>Quick nudges</h2>
+            <div class="list" id="today-nudges"></div>
+          </div>
+
+          <div class="card">
+            <h2>Recent activity</h2>
+            <div class="list" id="today-history"></div>
           </div>
         </section>
 
-        <section class="route" data-route="calisthenics" hidden>
-          <div class="card">
-            <h2>Calisthenics library</h2>
+        <section class="route" data-route="train" hidden>
+          <div class="card sticky-filters">
             <div class="filter-row">
+              <label>
+                Search
+                <input type="search" id="exercise-search" placeholder="Search exercises" />
+              </label>
               <label>
                 Category
                 <select id="exercise-filter">
@@ -82,18 +110,52 @@
                   <option value="mobility">Mobility</option>
                 </select>
               </label>
-              <button class="ghost" id="add-exercise">Add exercise</button>
+              <label>
+                Equipment
+                <select id="exercise-equipment-filter">
+                  <option value="all">All</option>
+                </select>
+              </label>
+              <label>
+                Level
+                <select id="exercise-level-filter">
+                  <option value="all">All</option>
+                  <option value="beginner">Beginner</option>
+                  <option value="intermediate">Intermediate</option>
+                  <option value="advanced">Advanced</option>
+                </select>
+              </label>
             </div>
-            <div class="list" id="exercise-list"></div>
           </div>
 
           <div class="card">
-            <h2>Templates & sessions</h2>
+            <div class="card-header">
+              <div>
+                <h2>Calisthenics library</h2>
+                <p class="muted">Tap an exercise for a guided demo.</p>
+              </div>
+              <button class="ghost" id="add-exercise" type="button">Add exercise</button>
+            </div>
+            <div class="exercise-grid" id="exercise-list"></div>
+          </div>
+
+          <div class="card">
+            <div class="card-header">
+              <div>
+                <h2>Templates & sessions</h2>
+                <p class="muted">Log sessions in one flow.</p>
+              </div>
+              <button class="ghost" id="add-template" type="button">Create template</button>
+            </div>
+            <div class="segmented" role="tablist" aria-label="Template filters" id="template-filters">
+              <button type="button" data-template-filter="recent" aria-pressed="true">Recent</button>
+              <button type="button" data-template-filter="favorites">Favorites</button>
+              <button type="button" data-template-filter="all">All</button>
+            </div>
             <div class="split">
               <div>
                 <h3>Templates</h3>
                 <div class="list" id="template-list"></div>
-                <button class="ghost" id="add-template">Create template</button>
               </div>
               <div>
                 <h3>Recent sessions</h3>
@@ -109,7 +171,7 @@
           <div class="card">
             <h2>Progressions</h2>
             <div class="list" id="progression-list"></div>
-            <button class="ghost" id="add-progression">Add progression</button>
+            <button class="ghost" id="add-progression" type="button">Add progression</button>
           </div>
 
           <div class="card tone-warning" id="calisthenics-safety">
@@ -118,32 +180,72 @@
           </div>
         </section>
 
-        <section class="route" data-route="steps" hidden>
+        <section class="route exercise-detail" data-route="exercise" data-route-parent="train" hidden>
           <div class="card">
-            <h2>Steps tracker</h2>
-            <div class="split">
+            <div class="exercise-header">
               <div>
-                <h3>Daily goal</h3>
-                <p id="steps-goal">0 steps</p>
-                <button class="ghost" data-action="edit-steps-goal">Edit goal</button>
+                <h2 id="exercise-title">Exercise</h2>
+                <p class="muted" id="exercise-purpose">Good form demo.</p>
               </div>
-              <div>
-                <h3>Week overview</h3>
-                <p id="steps-week">No data yet.</p>
-              </div>
-              <div>
-                <h3>Month overview</h3>
-                <p id="steps-month">No data yet.</p>
-              </div>
+              <div class="tag-row" id="exercise-tags"></div>
+            </div>
+            <div class="media-player" id="exercise-media"></div>
+            <div class="media-controls">
+              <button class="ghost" id="media-play-toggle" type="button" aria-label="Play or pause demo">Play</button>
+              <button class="ghost" id="media-slow-toggle" type="button" aria-label="Toggle slow motion">0.5x</button>
+              <button class="ghost" id="media-restart" type="button" aria-label="Restart demo">Restart</button>
+            </div>
+            <p class="muted">Good form demo.</p>
+          </div>
+
+          <div class="card">
+            <h2>Key cues</h2>
+            <div class="cue-chips" id="exercise-cues"></div>
+            <details class="details" id="exercise-faults">
+              <summary>Common faults</summary>
+              <div class="muted" id="exercise-faults-list"></div>
+            </details>
+            <div class="scaling">
+              <h3>Scaling</h3>
+              <p class="muted" id="exercise-scaling"></p>
             </div>
           </div>
+
           <div class="card">
-            <h2>Log steps</h2>
+            <h2>Variations</h2>
+            <div class="variation-grid" id="exercise-variations"></div>
+          </div>
+
+          <div class="card">
+            <h2>Equipment</h2>
+            <div class="tag-row" id="exercise-equipment"></div>
+          </div>
+
+          <div class="sticky-actions" id="exercise-actions">
+            <button class="ghost" type="button" data-exercise-action="add">Add to workout</button>
+            <button class="primary" type="button" data-exercise-action="start">Start session</button>
+          </div>
+        </section>
+
+        <section class="route" data-route="steps" hidden>
+          <div class="card">
+            <div class="card-header">
+              <div>
+                <h2>Steps</h2>
+                <p id="steps-goal">0 steps</p>
+              </div>
+              <button class="ghost" data-action="edit-steps-goal" type="button">Edit goal</button>
+            </div>
+            <div class="progress">
+              <div class="progress-bar" id="steps-goal-bar"></div>
+            </div>
+            <div class="week-strip" id="steps-week-strip"></div>
+            <div class="summary" id="steps-week">No data yet.</div>
+          </div>
+
+          <div class="card">
+            <h2>Quick log</h2>
             <form id="steps-form" class="form-grid">
-              <label>
-                Date
-                <input type="date" name="date" required />
-              </label>
               <label>
                 Count
                 <input type="number" name="count" min="0" step="1" required />
@@ -152,40 +254,45 @@
                 Source
                 <select name="source" required>
                   <option value="manual">Manual</option>
-                  <option value="device">Device (stub)</option>
-                  <option value="external">External (stub)</option>
+                  <option value="device">Device</option>
+                  <option value="external">External</option>
                 </select>
+              </label>
+              <label>
+                Date
+                <input type="date" name="date" required />
               </label>
               <button class="primary" type="submit">Save steps</button>
             </form>
           </div>
+
           <div class="card">
             <h2>History</h2>
             <div class="list" id="steps-history"></div>
+            <div class="summary" id="steps-month">Month summary --</div>
           </div>
         </section>
 
-        <section class="route" data-route="fasting" hidden>
-          <div class="card">
-            <h2>Intermittent fasting</h2>
-            <div class="split">
+        <section class="route" data-route="fasting" data-route-parent="today" hidden>
+          <div class="card hero">
+            <div class="card-header">
               <div>
                 <p class="eyebrow">Active fast</p>
-                <h3 id="fasting-status">Not fasting</h3>
+                <h2 id="fasting-status">Not fasting</h2>
                 <p id="fasting-elapsed">--</p>
-                <button class="primary" id="fasting-toggle">Start fast</button>
               </div>
-              <div>
-                <p class="eyebrow">Mode</p>
-                <h3 id="fasting-mode">16:8</h3>
-                <button class="ghost" id="fasting-edit-mode">Change mode</button>
-                <p id="fasting-next">Next window --</p>
+              <div class="align-right">
+                <span class="pill" id="fasting-mode">16:8</span>
+                <button class="ghost" id="fasting-edit-mode" type="button">Change mode</button>
               </div>
             </div>
+            <p class="muted" id="fasting-next">Start a fast to see the next window.</p>
+            <button class="primary" id="fasting-toggle" data-action="toggle-fast" data-fast-toggle type="button">Start fast</button>
           </div>
 
           <div class="card">
             <h2>Reminders</h2>
+            <p class="muted">Keep nudges simple and quiet when you need focus.</p>
             <div class="toggle-row">
               <label><input type="checkbox" id="reminder-fast-start" /> Fast start</label>
               <label><input type="checkbox" id="reminder-fast-end" /> Fast end</label>
@@ -196,6 +303,10 @@
               Quiet hours
               <input type="time" id="quiet-start" /> to <input type="time" id="quiet-end" />
             </label>
+            <div class="callout" id="notification-permission" hidden>
+              <p>Notifications are off. Enable them to get fasting and hydration reminders.</p>
+              <button class="ghost" type="button" id="enable-notifications">Enable notifications</button>
+            </div>
           </div>
 
           <div class="card">
@@ -209,75 +320,156 @@
           </div>
         </section>
 
-        <section class="route" data-route="weight" hidden>
+        <section class="route" data-route="weight" data-route-parent="today" hidden>
           <div class="card">
-            <h2>Weight monitoring</h2>
-            <div class="split">
-              <div>
-                <h3>Latest</h3>
-                <p id="weight-latest">--</p>
-              </div>
-              <div>
-                <h3>Trend</h3>
-                <p id="weight-trend">--</p>
-                <p id="weight-projection">Goal projection --</p>
-              </div>
-            </div>
-          </div>
-          <div class="card">
-            <h2>Log weight</h2>
+            <h2>Quick log</h2>
             <form id="weight-form" class="form-grid">
-              <label>
-                Date & time
-                <input type="datetime-local" name="at" required />
-              </label>
               <label>
                 Weight
                 <input type="number" name="weight" min="0" step="0.1" required />
               </label>
-              <label>
-                Notes/tags
-                <input type="text" name="notes" placeholder="e.g., morning, post-workout" />
-              </label>
               <button class="primary" type="submit">Save entry</button>
+              <details class="details">
+                <summary>More options</summary>
+                <label>
+                  Date & time
+                  <input type="datetime-local" name="at" />
+                </label>
+                <label>
+                  Notes/tags
+                  <input type="text" name="notes" placeholder="e.g., morning, post-workout" />
+                </label>
+              </details>
             </form>
           </div>
+
           <div class="card">
-            <h2>History</h2>
+            <div class="card-header">
+              <div>
+                <h2>Trends</h2>
+                <p id="weight-trend">Trend --</p>
+              </div>
+              <div class="segmented" role="tablist" aria-label="Weight range" id="weight-range">
+                <button type="button" data-weight-range="7" aria-pressed="true">7d</button>
+                <button type="button" data-weight-range="30">30d</button>
+                <button type="button" data-weight-range="90">90d</button>
+              </div>
+            </div>
+            <p id="weight-projection">Goal projection --</p>
+          </div>
+
+          <div class="card">
+            <h2>Latest entry</h2>
+            <p id="weight-latest">--</p>
             <div class="list" id="weight-history"></div>
           </div>
         </section>
 
-        <section class="route" data-route="analytics" hidden>
+        <section class="route" data-route="trends" hidden>
           <div class="card">
-            <h2>Analytics</h2>
+            <h2>Top metrics</h2>
             <div class="grid-2" id="analytics-summary"></div>
           </div>
           <div class="card">
             <h2>Weekly report card</h2>
             <div id="report-card" class="report-card"></div>
-            <button class="ghost" id="export-report">Export report (CSV summary)</button>
+            <button class="ghost" id="export-report" type="button">Export report (CSV summary)</button>
           </div>
           <div class="card">
             <h2>Exports</h2>
             <div class="actions">
-              <button class="ghost" data-export="steps">Export steps CSV</button>
-              <button class="ghost" data-export="fasting">Export fasting CSV</button>
-              <button class="ghost" data-export="weight">Export weight CSV</button>
-              <button class="ghost" data-export="workouts">Export workouts CSV</button>
+              <button class="ghost" data-export="steps" type="button">Export steps CSV</button>
+              <button class="ghost" data-export="fasting" type="button">Export fasting CSV</button>
+              <button class="ghost" data-export="weight" type="button">Export weight CSV</button>
+              <button class="ghost" data-export="workouts" type="button">Export workouts CSV</button>
             </div>
           </div>
         </section>
 
-        <section class="route" data-route="profile" hidden>
+        <section class="route" data-route="settings" hidden>
           <div class="card">
-            <h2>Profile</h2>
+            <div class="card-header">
+              <div>
+                <h2>Profile</h2>
+                <p class="muted">Personal details and baseline data.</p>
+              </div>
+              <button class="ghost" id="edit-profile" type="button">Edit profile</button>
+            </div>
             <div id="profile-summary">No profile yet.</div>
-            <button class="ghost" id="edit-profile">Edit profile</button>
           </div>
 
           <div class="card">
-            <h2>Goals & preferences</h2>
+            <h2>Appearance</h2>
+            <form id="appearance-form" class="form-grid">
+              <label>
+                Theme
+                <select name="theme">
+                  <option value="system">System</option>
+                  <option value="light">Light</option>
+                  <option value="dark">Dark</option>
+                </select>
+              </label>
+              <label>
+                Density
+                <select name="density">
+                  <option value="comfortable">Comfortable</option>
+                  <option value="compact">Compact</option>
+                </select>
+              </label>
+              <label>
+                Font size
+                <select name="fontSize">
+                  <option value="normal">Normal</option>
+                  <option value="large">Large</option>
+                </select>
+              </label>
+              <div class="accent-picker" id="accent-picker">
+                <span class="muted">Accent</span>
+                <label class="accent-option">
+                  <input type="radio" name="accent" value="amber" />
+                  <span aria-hidden="true"></span>
+                  Amber
+                </label>
+                <label class="accent-option">
+                  <input type="radio" name="accent" value="teal" />
+                  <span aria-hidden="true"></span>
+                  Teal
+                </label>
+                <label class="accent-option">
+                  <input type="radio" name="accent" value="blue" />
+                  <span aria-hidden="true"></span>
+                  Blue
+                </label>
+                <label class="accent-option">
+                  <input type="radio" name="accent" value="green" />
+                  <span aria-hidden="true"></span>
+                  Green
+                </label>
+                <label class="accent-option">
+                  <input type="radio" name="accent" value="slate" />
+                  <span aria-hidden="true"></span>
+                  Slate
+                </label>
+                <label class="accent-option">
+                  <input type="radio" name="accent" value="rose" />
+                  <span aria-hidden="true"></span>
+                  Rose
+                </label>
+              </div>
+            </form>
+          </div>
+
+          <div class="card">
+            <h2>Training</h2>
+            <label class="checkbox">
+              <input type="checkbox" id="autoplay-demos" name="autoplayDemos" />
+              Autoplay exercise demos
+            </label>
+            <p class="muted">Automatically disabled when reduced motion is enabled.</p>
+          </div>
+
+          <div class="card">
+            <h2>Goals</h2>
             <form id="settings-form" class="form-grid">
               <label>
                 Units
@@ -298,41 +490,62 @@
                 Workout frequency (per week)
                 <input type="number" name="workoutGoal" min="0" step="1" />
               </label>
-              <button class="primary" type="submit">Save settings</button>
+              <button class="primary" type="submit">Save goals</button>
             </form>
           </div>
 
           <div class="card">
-            <h2>Safety & disclaimers</h2>
-            <p>This app provides fitness tracking and is not medical advice. Consult a clinician for conditions, pregnancy, eating disorder history, diabetes/medications, or if unsure.</p>
-            <button class="ghost" id="review-safety">Review safety details</button>
+            <h2>Notifications</h2>
+            <p class="muted">Fasting reminders live under the fasting screen.</p>
+            <button class="ghost" type="button" data-route-jump="fasting">Manage fasting reminders</button>
           </div>
 
           <div class="card">
             <h2>Data controls</h2>
             <div class="actions">
-              <button class="ghost" id="export-all">Export all CSVs</button>
-              <button class="danger" id="delete-data">Delete all data</button>
+              <button class="ghost" id="export-all" type="button">Export all CSVs</button>
+              <button class="danger" id="delete-data" type="button">Delete all data</button>
             </div>
           </div>
 
           <div class="card">
+            <h2>Safety</h2>
+            <p>This app provides fitness tracking and is not medical advice. Consult a clinician for conditions, pregnancy, eating disorder history, diabetes/medications, or if unsure.</p>
+            <button class="ghost" id="review-safety" type="button">Review safety details</button>
+          </div>
+
+          <div class="card">
             <h2>About & install</h2>
+            <div class="actions">
+              <button class="ghost" id="share-app" type="button">Share app</button>
+              <button class="primary" id="install-app" type="button" hidden>Install</button>
+            </div>
             <div id="install-instructions"></div>
           </div>
         </section>
       </main>
 
-      <nav class="bottom-nav">
-        <button data-route="dashboard">Today</button>
-        <button data-route="calisthenics">Calisthenics</button>
+      <nav class="bottom-nav" role="tablist" aria-label="Primary">
+        <button data-route="today" aria-pressed="true">Today</button>
+        <button data-route="train">Train</button>
         <button data-route="steps">Steps</button>
-        <button data-route="fasting">Fasting</button>
-        <button data-route="weight">Weight</button>
-        <button data-route="analytics">Analytics</button>
-        <button data-route="profile">Profile</button>
+        <button data-route="trends">Trends</button>
+        <button data-route="settings">Settings</button>
       </nav>
     </div>
+
+    <div class="fab-stack" id="fab-stack">
+      <button class="fab" id="fast-fab" type="button" aria-label="Start fast" aria-expanded="false">
+        <span class="fab-label" id="fab-label">Start fast</span>
+      </button>
+      <div class="fab-menu" id="fab-menu" hidden>
+        <button class="fab-action" type="button" data-fab-action="log-weight">Log weight</button>
+        <button class="fab-action" type="button" data-fab-action="log-steps">Log steps</button>
+        <button class="fab-action" type="button" data-fab-action="start-workout">Start workout</button>
+      </div>
+      <button class="fab-toggle" id="fab-toggle" type="button" aria-label="Quick actions">+</button>
+    </div>
+    <div class="fab-backdrop" id="fab-backdrop" hidden></div>
 
     <div class="overlay" id="onboarding" hidden>
       <div class="modal">
@@ -424,4 +637,3 @@
     <script type="module" src="/app.js"></script>
   </body>
 </html>
-

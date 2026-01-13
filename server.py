@@ -18,7 +18,10 @@ class StaticHandler(SimpleHTTPRequestHandler):
         ".svg": "image/svg+xml",
         ".png": "image/png",
         ".jpg": "image/jpeg",
-        ".jpeg": "image/jpeg"
+        ".jpeg": "image/jpeg",
+        ".webp": "image/webp",
+        ".webm": "video/webm",
+        ".mp4": "video/mp4"
     }
 
     def __init__(self, *args, **kwargs):
