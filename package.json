@@ -1,0 +1,9 @@
+{
+  "name": "grit-fitness",
+  "private": true,
+  "version": "0.0.0",
+  "scripts": {
+    "dev": "python server.py",
+    "start": "python server.py"
+  }
+}

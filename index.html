@@ -1,0 +1,427 @@
+﻿<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#10181c" />
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <link rel="icon" href="/assets/icons/icon-192.png" />
+    <title>Grit Fitness</title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <header class="app-header">
+        <div>
+          <p class="eyebrow">Grit Fitness</p>
+          <h1>Own the day, not the app.</h1>
+        </div>
+        <div class="header-actions">
+          <button class="ghost" id="share-app" type="button">Share App</button>
+          <button class="primary" id="install-app" type="button" hidden>Install</button>
+        </div>
+      </header>
+
+      <main class="app-main">
+        <section class="route" data-route="dashboard">
+          <div class="card">
+            <h2>Today at a glance</h2>
+            <div class="grid-2">
+              <div class="metric">
+                <p>Steps</p>
+                <h3 id="today-steps">0</h3>
+                <span id="today-steps-meta">Goal 0 | Streak 0</span>
+              </div>
+              <div class="metric">
+                <p>Fasting</p>
+                <h3 id="today-fast">Not fasting</h3>
+                <span id="today-fast-meta">Next window --</span>
+              </div>
+              <div class="metric">
+                <p>Calisthenics</p>
+                <h3 id="today-workout">No session yet</h3>
+                <span id="today-workout-meta">Last session --</span>
+              </div>
+              <div class="metric">
+                <p>Weight</p>
+                <h3 id="today-weight">--</h3>
+                <span id="today-weight-meta">Trend --</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="card">
+            <h2>Quick actions</h2>
+            <div class="actions">
+              <button class="primary" data-action="log-steps">Log steps</button>
+              <button class="primary" data-action="toggle-fast">Start fast</button>
+              <button class="primary" data-action="log-weight">Log weight</button>
+              <button class="primary" data-action="start-workout">Start workout</button>
+            </div>
+          </div>
+
+          <div class="card">
+            <h2>Today focus</h2>
+            <p id="today-focus">Set your focus in Profile to personalize daily guidance.</p>
+          </div>
+        </section>
+
+        <section class="route" data-route="calisthenics" hidden>
+          <div class="card">
+            <h2>Calisthenics library</h2>
+            <div class="filter-row">
+              <label>
+                Category
+                <select id="exercise-filter">
+                  <option value="all">All</option>
+                  <option value="push">Push</option>
+                  <option value="pull">Pull</option>
+                  <option value="legs">Legs</option>
+                  <option value="core">Core</option>
+                  <option value="skill">Skill</option>
+                  <option value="mobility">Mobility</option>
+                </select>
+              </label>
+              <button class="ghost" id="add-exercise">Add exercise</button>
+            </div>
+            <div class="list" id="exercise-list"></div>
+          </div>
+
+          <div class="card">
+            <h2>Templates & sessions</h2>
+            <div class="split">
+              <div>
+                <h3>Templates</h3>
+                <div class="list" id="template-list"></div>
+                <button class="ghost" id="add-template">Create template</button>
+              </div>
+              <div>
+                <h3>Recent sessions</h3>
+                <div class="list" id="workout-list"></div>
+              </div>
+              <div>
+                <h3>Exercise trends</h3>
+                <div class="list" id="exercise-trends"></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="card">
+            <h2>Progressions</h2>
+            <div class="list" id="progression-list"></div>
+            <button class="ghost" id="add-progression">Add progression</button>
+          </div>
+
+          <div class="card tone-warning" id="calisthenics-safety">
+            <h2>Safety reminder</h2>
+            <p>Warm up thoroughly, progress gradually, and stop if you feel sharp pain. This app is not medical advice.</p>
+          </div>
+        </section>
+
+        <section class="route" data-route="steps" hidden>
+          <div class="card">
+            <h2>Steps tracker</h2>
+            <div class="split">
+              <div>
+                <h3>Daily goal</h3>
+                <p id="steps-goal">0 steps</p>
+                <button class="ghost" data-action="edit-steps-goal">Edit goal</button>
+              </div>
+              <div>
+                <h3>Week overview</h3>
+                <p id="steps-week">No data yet.</p>
+              </div>
+              <div>
+                <h3>Month overview</h3>
+                <p id="steps-month">No data yet.</p>
+              </div>
+            </div>
+          </div>
+          <div class="card">
+            <h2>Log steps</h2>
+            <form id="steps-form" class="form-grid">
+              <label>
+                Date
+                <input type="date" name="date" required />
+              </label>
+              <label>
+                Count
+                <input type="number" name="count" min="0" step="1" required />
+              </label>
+              <label>
+                Source
+                <select name="source" required>
+                  <option value="manual">Manual</option>
+                  <option value="device">Device (stub)</option>
+                  <option value="external">External (stub)</option>
+                </select>
+              </label>
+              <button class="primary" type="submit">Save steps</button>
+            </form>
+          </div>
+          <div class="card">
+            <h2>History</h2>
+            <div class="list" id="steps-history"></div>
+          </div>
+        </section>
+
+        <section class="route" data-route="fasting" hidden>
+          <div class="card">
+            <h2>Intermittent fasting</h2>
+            <div class="split">
+              <div>
+                <p class="eyebrow">Active fast</p>
+                <h3 id="fasting-status">Not fasting</h3>
+                <p id="fasting-elapsed">--</p>
+                <button class="primary" id="fasting-toggle">Start fast</button>
+              </div>
+              <div>
+                <p class="eyebrow">Mode</p>
+                <h3 id="fasting-mode">16:8</h3>
+                <button class="ghost" id="fasting-edit-mode">Change mode</button>
+                <p id="fasting-next">Next window --</p>
+              </div>
+            </div>
+          </div>
+
+          <div class="card">
+            <h2>Reminders</h2>
+            <div class="toggle-row">
+              <label><input type="checkbox" id="reminder-fast-start" /> Fast start</label>
+              <label><input type="checkbox" id="reminder-fast-end" /> Fast end</label>
+              <label><input type="checkbox" id="reminder-eat-end" /> Eating window end</label>
+              <label><input type="checkbox" id="reminder-hydration" /> Hydration prompts</label>
+            </div>
+            <label class="inline">
+              Quiet hours
+              <input type="time" id="quiet-start" /> to <input type="time" id="quiet-end" />
+            </label>
+          </div>
+
+          <div class="card">
+            <h2>History</h2>
+            <div class="list" id="fasting-history"></div>
+          </div>
+
+          <div class="card tone-warning">
+            <h2>Fasting safety</h2>
+            <p>Fasting is optional and not medical advice. Stop if you feel unwell, stay hydrated, and consult a clinician if you have any conditions or take medications.</p>
+          </div>
+        </section>
+
+        <section class="route" data-route="weight" hidden>
+          <div class="card">
+            <h2>Weight monitoring</h2>
+            <div class="split">
+              <div>
+                <h3>Latest</h3>
+                <p id="weight-latest">--</p>
+              </div>
+              <div>
+                <h3>Trend</h3>
+                <p id="weight-trend">--</p>
+                <p id="weight-projection">Goal projection --</p>
+              </div>
+            </div>
+          </div>
+          <div class="card">
+            <h2>Log weight</h2>
+            <form id="weight-form" class="form-grid">
+              <label>
+                Date & time
+                <input type="datetime-local" name="at" required />
+              </label>
+              <label>
+                Weight
+                <input type="number" name="weight" min="0" step="0.1" required />
+              </label>
+              <label>
+                Notes/tags
+                <input type="text" name="notes" placeholder="e.g., morning, post-workout" />
+              </label>
+              <button class="primary" type="submit">Save entry</button>
+            </form>
+          </div>
+          <div class="card">
+            <h2>History</h2>
+            <div class="list" id="weight-history"></div>
+          </div>
+        </section>
+
+        <section class="route" data-route="analytics" hidden>
+          <div class="card">
+            <h2>Analytics</h2>
+            <div class="grid-2" id="analytics-summary"></div>
+          </div>
+          <div class="card">
+            <h2>Weekly report card</h2>
+            <div id="report-card" class="report-card"></div>
+            <button class="ghost" id="export-report">Export report (CSV summary)</button>
+          </div>
+          <div class="card">
+            <h2>Exports</h2>
+            <div class="actions">
+              <button class="ghost" data-export="steps">Export steps CSV</button>
+              <button class="ghost" data-export="fasting">Export fasting CSV</button>
+              <button class="ghost" data-export="weight">Export weight CSV</button>
+              <button class="ghost" data-export="workouts">Export workouts CSV</button>
+            </div>
+          </div>
+        </section>
+
+        <section class="route" data-route="profile" hidden>
+          <div class="card">
+            <h2>Profile</h2>
+            <div id="profile-summary">No profile yet.</div>
+            <button class="ghost" id="edit-profile">Edit profile</button>
+          </div>
+
+          <div class="card">
+            <h2>Goals & preferences</h2>
+            <form id="settings-form" class="form-grid">
+              <label>
+                Units
+                <select name="units">
+                  <option value="metric">Metric</option>
+                  <option value="imperial">Imperial</option>
+                </select>
+              </label>
+              <label>
+                Steps goal
+                <input type="number" name="stepsGoal" min="0" step="100" />
+              </label>
+              <label>
+                Fasting target (hours)
+                <input type="number" name="fastTarget" min="0" step="0.5" />
+              </label>
+              <label>
+                Workout frequency (per week)
+                <input type="number" name="workoutGoal" min="0" step="1" />
+              </label>
+              <button class="primary" type="submit">Save settings</button>
+            </form>
+          </div>
+
+          <div class="card">
+            <h2>Safety & disclaimers</h2>
+            <p>This app provides fitness tracking and is not medical advice. Consult a clinician for conditions, pregnancy, eating disorder history, diabetes/medications, or if unsure.</p>
+            <button class="ghost" id="review-safety">Review safety details</button>
+          </div>
+
+          <div class="card">
+            <h2>Data controls</h2>
+            <div class="actions">
+              <button class="ghost" id="export-all">Export all CSVs</button>
+              <button class="danger" id="delete-data">Delete all data</button>
+            </div>
+          </div>
+
+          <div class="card">
+            <h2>About & install</h2>
+            <div id="install-instructions"></div>
+          </div>
+        </section>
+      </main>
+
+      <nav class="bottom-nav">
+        <button data-route="dashboard">Today</button>
+        <button data-route="calisthenics">Calisthenics</button>
+        <button data-route="steps">Steps</button>
+        <button data-route="fasting">Fasting</button>
+        <button data-route="weight">Weight</button>
+        <button data-route="analytics">Analytics</button>
+        <button data-route="profile">Profile</button>
+      </nav>
+    </div>
+
+    <div class="overlay" id="onboarding" hidden>
+      <div class="modal">
+        <h2>Welcome to Grit Fitness</h2>
+        <p>Let's set a baseline profile. Estimates like BMI/BMR are shown as guidance only.</p>
+        <form id="onboarding-form" class="form-grid">
+          <label>
+            Name or nickname
+            <input type="text" name="name" required />
+          </label>
+          <label>
+            Date of birth
+            <input type="date" name="dob" />
+          </label>
+          <label>
+            Age (if no DOB)
+            <input type="number" name="age" min="10" max="120" />
+          </label>
+          <label>
+            Gender
+            <select name="gender" required>
+              <option value="female">Female</option>
+              <option value="male">Male</option>
+              <option value="n/a">Prefer not to say</option>
+            </select>
+          </label>
+          <label>
+            Height
+            <input type="number" name="height" min="50" step="0.1" required />
+          </label>
+          <label>
+            Current weight
+            <input type="number" name="weight" min="0" step="0.1" required />
+          </label>
+          <label>
+            Target weight (optional)
+            <input type="number" name="target" min="0" step="0.1" />
+          </label>
+          <label>
+            Activity level
+            <select name="activity" required>
+              <option value="sedentary">Sedentary</option>
+              <option value="light">Lightly active</option>
+              <option value="moderate">Moderately active</option>
+              <option value="very">Very active</option>
+              <option value="athlete">Athlete</option>
+            </select>
+          </label>
+          <label>
+            Goal type
+            <select name="goal" required>
+              <option value="cut">Cut</option>
+              <option value="maintain">Maintain</option>
+              <option value="gain">Gain</option>
+            </select>
+          </label>
+          <label>
+            Units
+            <select name="units" required>
+              <option value="metric">Metric (cm/kg)</option>
+              <option value="imperial">Imperial (in/lb)</option>
+            </select>
+          </label>
+          <label>
+            Notes (medical/safety)
+            <textarea name="notes" rows="2" placeholder="Optional notes for your own context."></textarea>
+          </label>
+          <div class="list-item" id="onboarding-estimates">
+            <strong>Estimates:</strong>
+            <p>BMI: --</p>
+            <p>BMR/TDEE: --</p>
+          </div>
+          <label class="checkbox">
+            <input type="checkbox" name="safety" required />
+            I understand this is not medical advice.
+          </label>
+          <button class="primary" type="submit">Save profile</button>
+        </form>
+        <div class="disclaimer">
+          <p>Fasting is optional and not for everyone. Stop if you feel unwell and consult a clinician for conditions or medications.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="overlay" id="modal-overlay" hidden>
+      <div class="modal" id="modal-content"></div>
+    </div>
+
+    <script type="module" src="/app.js"></script>
+  </body>
+</html>
+
