@@ -1265,11 +1265,11 @@ textarea {
   left: 0;
   right: 0;
   display: grid;
-  grid-template-columns: repeat(6, 1fr);
-  gap: 4px;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 2px;
   background: rgba(10, 14, 16, 0.95);
   border-top: 1px solid rgba(255, 255, 255, 0.06);
-  padding: 10px 6px calc(10px + env(safe-area-inset-bottom));
+  padding: 8px 4px calc(8px + env(safe-area-inset-bottom));
   z-index: 10;
 }
 
@@ -1286,8 +1286,8 @@ textarea {
 .bottom-nav button {
   background: transparent;
   color: var(--muted);
-  padding: 8px 4px;
-  font-size: 0.75rem;
+  padding: 6px 2px;
+  font-size: clamp(0.64rem, 2.2vw, 0.75rem);
   border-radius: 12px;
 }
 
