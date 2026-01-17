@@ -538,6 +538,64 @@ p {
   font-size: var(--font-size-xs);
 }
 
+.timer-category {
+  margin-bottom: var(--space-4);
+}
+
+.timer-item {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.timer-item .actions {
+  justify-content: flex-start;
+}
+
+.timer-hero {
+  display: grid;
+  gap: var(--space-2);
+  text-align: center;
+  border: 1px solid var(--border);
+}
+
+.timer-hero[data-phase="work"] {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px rgba(245, 192, 74, 0.35);
+}
+
+.timer-hero[data-phase="rest"] {
+  border-color: rgba(68, 215, 136, 0.6);
+  box-shadow: 0 0 0 1px rgba(68, 215, 136, 0.35);
+}
+
+.timer-hero[data-phase="warmup"] {
+  border-color: rgba(245, 192, 74, 0.5);
+}
+
+.timer-hero[data-phase="cooldown"] {
+  border-color: rgba(145, 164, 176, 0.6);
+}
+
+.timer-countdown {
+  font-family: var(--font-display);
+  font-size: clamp(2.6rem, 8vw, 4.8rem);
+  letter-spacing: 0.08em;
+}
+
+.timer-controls {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: var(--space-3);
+}
+
+.timer-controls.secondary button {
+  min-height: 42px;
+}
+
+.timer-keep {
+  font-size: var(--font-size-xs);
+}
+
 .link-button {
   background: transparent;
   color: var(--accent);
@@ -629,6 +687,10 @@ p {
 
 :root[data-density="compact"] .macro-donut-card {
   padding: var(--space-2);
+}
+
+:root[data-density="compact"] .timer-countdown {
+  font-size: clamp(2.2rem, 8vw, 4rem);
 }
 
 .food-entry {
@@ -1203,7 +1265,7 @@ textarea {
   left: 0;
   right: 0;
   display: grid;
-  grid-template-columns: repeat(5, 1fr);
+  grid-template-columns: repeat(6, 1fr);
   gap: 4px;
   background: rgba(10, 14, 16, 0.95);
   border-top: 1px solid rgba(255, 255, 255, 0.06);

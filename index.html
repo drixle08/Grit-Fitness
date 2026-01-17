@@ -196,6 +196,155 @@
           </div>
         </section>
 
+        <section class="route" data-route="timer" data-route-parent="train" hidden>
+          <div class="card">
+            <h2>Quick start</h2>
+            <form id="timer-quick-form" class="form-grid">
+              <label>
+                Work (sec)
+                <input type="number" name="workSec" min="1" step="1" required />
+              </label>
+              <label>
+                Rest (sec)
+                <input type="number" name="restSec" min="0" step="1" />
+              </label>
+              <label>
+                Rounds
+                <input type="number" name="rounds" min="1" step="1" />
+              </label>
+              <label class="checkbox">
+                <input type="checkbox" name="isInfinite" />
+                Repeat until stopped (∞)
+              </label>
+              <label>
+                Warm-up (sec)
+                <input type="number" name="warmupSec" min="0" step="1" />
+              </label>
+              <label>
+                Cool-down (sec)
+                <input type="number" name="cooldownSec" min="0" step="1" />
+              </label>
+              <button class="primary" type="submit">Start timer</button>
+            </form>
+          </div>
+
+          <div class="card">
+            <div class="card-header">
+              <div>
+                <h2>Presets</h2>
+                <p class="muted">Built-in interval packs, ready offline.</p>
+              </div>
+            </div>
+            <div id="timer-presets"></div>
+          </div>
+
+          <div class="card">
+            <div class="card-header">
+              <div>
+                <h2>My programs</h2>
+                <p class="muted">Saved timers and duplicates.</p>
+              </div>
+              <button class="ghost" type="button" data-route-jump="timer-new">New program</button>
+            </div>
+            <div id="timer-programs"></div>
+          </div>
+        </section>
+
+        <section class="route" data-route="timer-new" data-route-parent="timer" hidden>
+          <div class="card">
+            <h2 id="timer-form-title">New program</h2>
+            <form id="timer-form" class="form-grid">
+              <label>
+                Name
+                <input type="text" name="name" required />
+              </label>
+              <label>
+                Category
+                <select name="category">
+                  <option value="HIIT">HIIT</option>
+                  <option value="Tabata">Tabata</option>
+                  <option value="Beginner">Beginner</option>
+                  <option value="Strength">Strength</option>
+                  <option value="Core">Core / Low impact</option>
+                  <option value="Open">Open (∞)</option>
+                  <option value="Custom">Custom</option>
+                </select>
+              </label>
+              <label>
+                Work (sec)
+                <input type="number" name="workSec" min="1" step="1" required />
+              </label>
+              <label>
+                Rest (sec)
+                <input type="number" name="restSec" min="0" step="1" />
+              </label>
+              <label>
+                Rounds
+                <input type="number" name="rounds" min="1" step="1" />
+              </label>
+              <label class="checkbox">
+                <input type="checkbox" name="isInfinite" />
+                Repeat until stopped (∞)
+              </label>
+              <label>
+                Warm-up (sec)
+                <input type="number" name="warmupSec" min="0" step="1" />
+              </label>
+              <label>
+                Cool-down (sec)
+                <input type="number" name="cooldownSec" min="0" step="1" />
+              </label>
+              <label class="checkbox">
+                <input type="checkbox" name="soundEnabled" />
+                Sound cues
+              </label>
+              <label class="checkbox">
+                <input type="checkbox" name="vibrationEnabled" />
+                Vibration cues
+              </label>
+              <label class="checkbox">
+                <input type="checkbox" name="countdownEnabled" />
+                Countdown beeps
+              </label>
+              <label class="checkbox">
+                <input type="checkbox" name="keepAwakeEnabled" />
+                Keep screen awake
+              </label>
+              <button class="primary" type="submit">Save program</button>
+            </form>
+          </div>
+        </section>
+
+        <section class="route timer-run" data-route="timer-run" data-route-parent="timer" hidden>
+          <div class="card hero timer-hero" id="timer-run-hero">
+            <p class="eyebrow" id="timer-run-name">Quick start</p>
+            <h2 id="timer-phase-label">Ready</h2>
+            <div class="timer-countdown" id="timer-countdown">00:00</div>
+            <p class="muted" id="timer-round-meta">Round --</p>
+            <p class="muted" id="timer-next-up">Next up --</p>
+            <p class="muted timer-keep" id="timer-keep-awake">Keep awake: --</p>
+          </div>
+          <div class="card">
+            <div class="timer-controls">
+              <button class="primary" id="timer-toggle" type="button">Start</button>
+              <button class="ghost" id="timer-skip" type="button">Skip</button>
+              <button class="danger" id="timer-stop" type="button">Stop</button>
+            </div>
+            <div class="timer-controls secondary">
+              <button class="ghost" id="timer-minus" type="button">-10s</button>
+              <button class="ghost" id="timer-plus" type="button">+10s</button>
+              <button class="ghost" id="timer-lock" type="button">Lock</button>
+            </div>
+          </div>
+          <div class="overlay" id="timer-lock-overlay" hidden>
+            <div class="modal">
+              <h2>Locked</h2>
+              <p>Tap to unlock the timer controls.</p>
+              <button class="primary" id="timer-unlock" type="button">Unlock</button>
+            </div>
+          </div>
+        </section>
+
         <section class="route exercise-detail" data-route="exercise" data-route-parent="train" hidden>
           <div class="card">
             <div class="exercise-header">
@@ -948,6 +1097,7 @@
       <nav class="bottom-nav" role="tablist" aria-label="Primary">
         <button data-route="today" aria-pressed="true">Today</button>
         <button data-route="train">Train</button>
+        <button data-route="timer">Timer</button>
         <button data-route="food">Food</button>
         <button data-route="trends">Trends</button>
         <button data-route="settings">Settings</button>
@@ -960,6 +1110,7 @@
       </button>
       <div class="fab-menu" id="fab-menu" hidden>
         <button class="fab-action" type="button" data-fab-action="quick-add-food">Quick add food</button>
+        <button class="fab-action" type="button" data-fab-action="start-timer">Start timer</button>
         <button class="fab-action" type="button" data-fab-action="log-weight">Log weight</button>
         <button class="fab-action" type="button" data-fab-action="log-steps">Log steps</button>
         <button class="fab-action" type="button" data-fab-action="start-workout">Start workout</button>

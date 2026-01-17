@@ -1,5 +1,5 @@
 ﻿const DB_NAME = "grit-fitness";
-const DB_VERSION = 4;
+const DB_VERSION = 5;
 
 const STORES = {
   profiles: { keyPath: "id" },
@@ -16,6 +16,8 @@ const STORES = {
     indexes: ["dateLocal", { name: "dateMeal", keyPath: ["dateLocal", "mealType"] }]
   },
   nutritionGoals: { keyPath: "id", indexes: ["updatedAt"] },
+  intervalPrograms: { keyPath: "id", indexes: ["category", "isBuiltIn", "isFavorite", "updatedAt"] },
+  intervalSessions: { keyPath: "id", indexes: ["programId", "startedAt"] },
   exercises: { keyPath: "id", indexes: ["category"] },
   workoutTemplates: { keyPath: "id", indexes: ["name"] },
   workouts: { keyPath: "id", indexes: ["startedAt"] },

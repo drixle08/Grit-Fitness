@@ -21,6 +21,8 @@ const state = {
   recipes: [],
   foodLogs: [],
   nutritionGoals: null,
+  intervalPrograms: [],
+  intervalSessions: [],
   exercises: [],
   templates: [],
   workouts: [],
@@ -45,7 +47,18 @@ const state = {
   recipeDraft: {
     ingredients: []
   },
-  activeRecipeId: null
+  activeRecipeId: null,
+  activeTimerId: null,
+  timerQuick: {
+    workSec: 40,
+    restSec: 20,
+    rounds: 10,
+    warmupSec: 60,
+    cooldownSec: 60,
+    isInfinite: false
+  },
+  timerRun: null,
+  timerLock: false
 };
 
 const ACTIVITY_FACTORS = {
@@ -111,6 +124,196 @@ const MACRO_VISUALS = [
   { key: "fat", label: "Fat", short: "F" },
   { key: "fiber", label: "Fiber", short: "Fi" }
 ];
+
+const DEFAULT_TIMER_SETTINGS = {
+  soundEnabled: true,
+  vibrationEnabled: true,
+  countdownEnabled: true,
+  keepAwakeEnabled: true
+};
+
+const TIMER_PRESET_SEED = [
+  {
+    name: "HIIT 50/10 x 10",
+    category: "HIIT",
+    warmupSec: 60,
+    workSec: 50,
+    restSec: 10,
+    rounds: 10,
+    cooldownSec: 60,
+    isInfinite: false
+  },
+  {
+    name: "HIIT 40/20 x 12",
+    category: "HIIT",
+    warmupSec: 60,
+    workSec: 40,
+    restSec: 20,
+    rounds: 12,
+    cooldownSec: 60,
+    isInfinite: false
+  },
+  {
+    name: "HIIT 30/30 x 10",
+    category: "HIIT",
+    warmupSec: 60,
+    workSec: 30,
+    restSec: 30,
+    rounds: 10,
+    cooldownSec: 60,
+    isInfinite: false
+  },
+  {
+    name: "HIIT 45/15 x 10",
+    category: "HIIT",
+    warmupSec: 60,
+    workSec: 45,
+    restSec: 15,
+    rounds: 10,
+    cooldownSec: 60,
+    isInfinite: false
+  },
+  {
+    name: "Tabata 20/10 x 8",
+    category: "Tabata",
+    warmupSec: 60,
+    workSec: 20,
+    restSec: 10,
+    rounds: 8,
+    cooldownSec: 60,
+    isInfinite: false
+  },
+  {
+    name: "Tabata 20/10 x 16",
+    category: "Tabata",
+    warmupSec: 90,
+    workSec: 20,
+    restSec: 10,
+    rounds: 16,
+    cooldownSec: 90,
+    isInfinite: false
+  },
+  {
+    name: "Tabata 30/15 x 8",
+    category: "Tabata",
+    warmupSec: 90,
+    workSec: 30,
+    restSec: 15,
+    rounds: 8,
+    cooldownSec: 90,
+    isInfinite: false
+  },
+  {
+    name: "Starter 30/30 x 8",
+    category: "Beginner",
+    warmupSec: 60,
+    workSec: 30,
+    restSec: 30,
+    rounds: 8,
+    cooldownSec: 60,
+    isInfinite: false
+  },
+  {
+    name: "Starter 20/40 x 8",
+    category: "Beginner",
+    warmupSec: 60,
+    workSec: 20,
+    restSec: 40,
+    rounds: 8,
+    cooldownSec: 60,
+    isInfinite: false
+  },
+  {
+    name: "Conditioning 60/30 x 8",
+    category: "Beginner",
+    warmupSec: 90,
+    workSec: 60,
+    restSec: 30,
+    rounds: 8,
+    cooldownSec: 90,
+    isInfinite: false
+  },
+  {
+    name: "Strength 40/20 x 8",
+    category: "Strength",
+    warmupSec: 60,
+    workSec: 40,
+    restSec: 20,
+    rounds: 8,
+    cooldownSec: 60,
+    isInfinite: false
+  },
+  {
+    name: "Strength 60/60 x 6",
+    category: "Strength",
+    warmupSec: 90,
+    workSec: 60,
+    restSec: 60,
+    rounds: 6,
+    cooldownSec: 90,
+    isInfinite: false
+  },
+  {
+    name: "Core 30/10 x 12",
+    category: "Core",
+    warmupSec: 30,
+    workSec: 30,
+    restSec: 10,
+    rounds: 12,
+    cooldownSec: 30,
+    isInfinite: false
+  },
+  {
+    name: "Low Impact 45/15 x 12",
+    category: "Core",
+    warmupSec: 60,
+    workSec: 45,
+    restSec: 15,
+    rounds: 12,
+    cooldownSec: 60,
+    isInfinite: false
+  },
+  {
+    name: "Open HIIT 40/20 (∞)",
+    category: "Open",
+    warmupSec: 60,
+    workSec: 40,
+    restSec: 20,
+    rounds: 0,
+    cooldownSec: 0,
+    isInfinite: true
+  },
+  {
+    name: "Open Pace 60/30 (∞)",
+    category: "Open",
+    warmupSec: 60,
+    workSec: 60,
+    restSec: 30,
+    rounds: 0,
+    cooldownSec: 0,
+    isInfinite: true
+  }
+];
+
+const TIMER_CATEGORY_LABELS = {
+  HIIT: "HIIT Classics",
+  Tabata: "Tabata Variants",
+  Beginner: "Beginner / Conditioning",
+  Strength: "Strength-Endurance",
+  Core: "Core / Low Impact",
+  Open: "Open-Ended (∞)",
+  Custom: "Custom"
+};
+
+const TIMER_PHASE_LABELS = {
+  countdown: "Get ready",
+  warmup: "Warm-up",
+  work: "Work",
+  rest: "Rest",
+  cooldown: "Cool-down",
+  complete: "Complete",
+  idle: "Ready"
+};
 
 const DEFAULT_NUTRITION_GOALS = {
   id: "default",
@@ -578,6 +781,9 @@ let activeExerciseId = null;
 let captionTimer = null;
 let toastTimer = null;
 let donutRenderer = null;
+let timerRafId = null;
+let timerWakeLock = null;
+let timerAudio = null;
 const foodSwipeStart = new Map();
 
 const routes = [
@@ -585,6 +791,9 @@ const routes = [
   "train",
   "exercise",
   "steps",
+  "timer",
+  "timer-new",
+  "timer-run",
   "food",
   "food-search",
   "food-portion",
@@ -604,6 +813,8 @@ const routeParents = {
   fasting: "today",
   weight: "today",
   exercise: "train",
+  "timer-new": "timer",
+  "timer-run": "timer",
   "food-search": "food",
   "food-portion": "food",
   "food-quick": "food",
@@ -619,6 +830,9 @@ const routeTitles = {
   train: "Train",
   exercise: "Exercise",
   steps: "Steps",
+  timer: "Timer",
+  "timer-new": "New timer",
+  "timer-run": "Timer run",
   food: "Food",
   "food-search": "Add food",
   "food-portion": "Portion",
@@ -793,6 +1007,13 @@ function formatDuration(ms) {
   const hours = Math.floor(totalMinutes / 60);
   const minutes = totalMinutes % 60;
   return `${hours}h ${minutes}m`;
+}
+
+function formatTimerSeconds(totalSeconds) {
+  const safe = Math.max(0, Math.round(Number(totalSeconds) || 0));
+  const minutes = Math.floor(safe / 60);
+  const seconds = safe % 60;
+  return `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
 }
 
 function macroProgress(value, goal) {
@@ -1172,6 +1393,8 @@ async function loadState() {
   state.recipes = await getAll("recipes");
   state.foodLogs = await getAll("foodLogs");
   state.nutritionGoals = await get("nutritionGoals", "default");
+  state.intervalPrograms = await getAll("intervalPrograms");
+  state.intervalSessions = await getAll("intervalSessions");
   state.exercises = await getAll("exercises");
   state.templates = await getAll("workoutTemplates");
   state.workouts = await getAll("workouts");
@@ -1284,6 +1507,8 @@ async function loadState() {
     state.settings.foodMigrationDone = true;
     await put("settings", state.settings);
   }
+
+  await seedIntervalPrograms();
 }
 
 async function seedFoodDatabase() {
@@ -1319,6 +1544,34 @@ async function seedFoodDatabase() {
   renderFoodLibrary();
 }
 
+async function seedIntervalPrograms() {
+  const existing = await getAll("intervalPrograms");
+  const existingIds = new Set(existing.map((program) => program.id));
+  const now = new Date().toISOString();
+  const builtIns = TIMER_PRESET_SEED.map((preset) => ({
+    id: `timer-${slugify(preset.name)}`,
+    name: preset.name,
+    category: preset.category,
+    type: "simple",
+    workSec: preset.workSec,
+    restSec: preset.restSec,
+    rounds: preset.rounds,
+    isInfinite: preset.isInfinite,
+    warmupSec: preset.warmupSec,
+    cooldownSec: preset.cooldownSec,
+    settings: { ...DEFAULT_TIMER_SETTINGS },
+    isBuiltIn: true,
+    isFavorite: false,
+    createdAt: now,
+    updatedAt: now
+  }));
+  const missing = builtIns.filter((preset) => !existingIds.has(preset.id));
+  if (missing.length) {
+    await bulkPut("intervalPrograms", missing);
+  }
+  state.intervalPrograms = await getAll("intervalPrograms");
+}
+
 async function loadDonutRenderer() {
   if (donutRenderer) return donutRenderer;
   const module = await import("/food-chart.js");
@@ -1339,6 +1592,9 @@ function render() {
   renderRecipeDetail();
   renderFoodGoals();
   renderFoodQuick();
+  renderTimerHome();
+  renderTimerForm();
+  renderTimerRun();
   renderFasting();
   renderWeight();
   renderCalisthenics();
@@ -2079,6 +2335,503 @@ function renderRecipeDetail() {
     })
     .join("");
   qs("#recipe-detail-ingredients").innerHTML = ingredientList || "<div class=\"list-item\">No ingredients yet.</div>";
+}
+
+function getTimerProgramById(id) {
+  return state.intervalPrograms.find((program) => program.id === id);
+}
+
+function formatTimerSummary(program) {
+  if (!program) return "--";
+  const warmup = Number(program.warmupSec) > 0 ? ` + ${program.warmupSec}s warm-up` : "";
+  const cooldown = Number(program.cooldownSec) > 0 ? ` + ${program.cooldownSec}s cool-down` : "";
+  const roundsLabel = program.isInfinite ? "∞" : `x${program.rounds}`;
+  return `${program.workSec}s/${program.restSec}s ${roundsLabel}${warmup}${cooldown}`;
+}
+
+function timerPhaseDurationSec(timerState, phase) {
+  if (!timerState) return 0;
+  if (phase === "countdown") return timerState.countdownSec || 0;
+  if (phase === "warmup") return timerState.warmupSec || 0;
+  if (phase === "work") return timerState.workSec || 0;
+  if (phase === "rest") return timerState.restSec || 0;
+  if (phase === "cooldown") return timerState.cooldownSec || 0;
+  return 0;
+}
+
+function timerNextPhase(timerState) {
+  if (!timerState) return "complete";
+  const { phase } = timerState;
+  if (phase === "countdown") {
+    return timerState.warmupSec > 0 ? "warmup" : "work";
+  }
+  if (phase === "warmup") return "work";
+  if (phase === "work") {
+    if (!timerState.isInfinite && timerState.roundsCompleted >= timerState.roundsTotal) {
+      return timerState.cooldownSec > 0 ? "cooldown" : "complete";
+    }
+    return timerState.restSec > 0 ? "rest" : "work";
+  }
+  if (phase === "rest") return "work";
+  if (phase === "cooldown") return "complete";
+  return "complete";
+}
+
+function timerPhaseLabel(phase) {
+  return TIMER_PHASE_LABELS[phase] || "Ready";
+}
+
+function timerRoundMeta(timerState) {
+  if (!timerState) return "--";
+  if (timerState.isInfinite) {
+    const current = timerState.phase === "work" ? timerState.roundsCompleted + 1 : timerState.roundsCompleted;
+    return `Round ${Math.max(current, 1)} of ∞`;
+  }
+  const total = timerState.roundsTotal || 0;
+  const current = timerState.phase === "work" ? timerState.roundsCompleted + 1 : timerState.roundsCompleted;
+  return `Round ${Math.min(current, total)} of ${total}`;
+}
+
+function timerNextPreview(timerState) {
+  if (!timerState) return "--";
+  const nextPhase = timerNextPhase(timerState);
+  if (nextPhase === "complete") return "Completed";
+  const duration = timerPhaseDurationSec(timerState, nextPhase);
+  return `Next: ${timerPhaseLabel(nextPhase)} ${formatTimerSeconds(duration)}`;
+}
+
+function normalizeTimerSettings(settings) {
+  return { ...DEFAULT_TIMER_SETTINGS, ...(settings || {}) };
+}
+
+function validateTimerValues(values) {
+  if (!values.workSec || values.workSec <= 0) return "Work must be greater than 0.";
+  if (values.restSec < 0) return "Rest must be 0 or more.";
+  if (!values.isInfinite && (!values.rounds || values.rounds < 1)) return "Rounds must be 1 or more.";
+  return "";
+}
+
+function renderTimerHome() {
+  const quickForm = qs("#timer-quick-form");
+  if (quickForm && !quickForm.contains(document.activeElement)) {
+    quickForm.workSec.value = state.timerQuick.workSec;
+    quickForm.restSec.value = state.timerQuick.restSec;
+    quickForm.rounds.value = state.timerQuick.rounds;
+    quickForm.isInfinite.checked = state.timerQuick.isInfinite;
+    quickForm.warmupSec.value = state.timerQuick.warmupSec;
+    quickForm.cooldownSec.value = state.timerQuick.cooldownSec;
+    quickForm.rounds.disabled = state.timerQuick.isInfinite;
+  }
+
+  const presetWrap = qs("#timer-presets");
+  if (presetWrap) {
+    const categories = ["HIIT", "Tabata", "Beginner", "Strength", "Core", "Open"];
+    const builtIns = state.intervalPrograms
+      .filter((program) => program.isBuiltIn)
+      .slice()
+      .sort((a, b) => a.name.localeCompare(b.name));
+    presetWrap.innerHTML = categories
+      .map((category) => {
+        const items = builtIns.filter((program) => program.category === category);
+        if (!items.length) return "";
+        const cards = items
+          .map((program) => {
+            const favoriteLabel = program.isFavorite ? "Unfavorite" : "Favorite";
+            return `
+              <div class="list-item timer-item">
+                <div>
+                  <strong>${program.name}</strong>
+                  <div class="muted">${formatTimerSummary(program)}</div>
+                </div>
+                <div class="actions">
+                  <button class="ghost" type="button" data-timer-start="${program.id}">Start</button>
+                  <button class="ghost" type="button" data-timer-favorite="${program.id}">${favoriteLabel}</button>
+                  <button class="ghost" type="button" data-timer-duplicate="${program.id}">Duplicate to edit</button>
+                </div>
+              </div>
+            `;
+          })
+          .join("");
+        return `
+          <div class="timer-category">
+            <h3>${TIMER_CATEGORY_LABELS[category] || category}</h3>
+            <div class="list">${cards}</div>
+          </div>
+        `;
+      })
+      .join("");
+  }
+
+  const programWrap = qs("#timer-programs");
+  if (programWrap) {
+    const programs = state.intervalPrograms.filter((program) => !program.isBuiltIn);
+    if (!programs.length) {
+      programWrap.innerHTML = "<div class=\"list-item\">No programs yet. Duplicate a preset or create one.</div>";
+    } else {
+      programWrap.innerHTML = programs
+        .map((program) => {
+          const favoriteLabel = program.isFavorite ? "Unfavorite" : "Favorite";
+          return `
+            <div class="list-item timer-item">
+              <div>
+                <strong>${program.name}</strong>
+                <div class="muted">${formatTimerSummary(program)}</div>
+              </div>
+              <div class="actions">
+                <button class="ghost" type="button" data-timer-start="${program.id}">Start</button>
+                <button class="ghost" type="button" data-timer-edit="${program.id}">Edit</button>
+                <button class="ghost" type="button" data-timer-favorite="${program.id}">${favoriteLabel}</button>
+              </div>
+            </div>
+          `;
+        })
+        .join("");
+    }
+  }
+}
+
+function renderTimerForm() {
+  const form = qs("#timer-form");
+  if (!form) return;
+  const title = qs("#timer-form-title");
+  const program = state.activeTimerId ? getTimerProgramById(state.activeTimerId) : null;
+  if (program && program.isBuiltIn) {
+    state.activeTimerId = null;
+  }
+  const edit = program && !program.isBuiltIn;
+  if (title) title.textContent = edit ? "Edit program" : "New program";
+  if (!form.contains(document.activeElement)) {
+    form.name.value = edit ? program.name : "";
+    form.category.value = edit ? program.category : "HIIT";
+    form.workSec.value = edit ? program.workSec : 40;
+    form.restSec.value = edit ? program.restSec : 20;
+    form.rounds.value = edit ? program.rounds : 10;
+    form.isInfinite.checked = edit ? Boolean(program.isInfinite) : false;
+    form.warmupSec.value = edit ? program.warmupSec : 60;
+    form.cooldownSec.value = edit ? program.cooldownSec : 60;
+    const settings = edit ? normalizeTimerSettings(program.settings) : DEFAULT_TIMER_SETTINGS;
+    form.soundEnabled.checked = settings.soundEnabled;
+    form.vibrationEnabled.checked = settings.vibrationEnabled;
+    form.countdownEnabled.checked = settings.countdownEnabled;
+    form.keepAwakeEnabled.checked = settings.keepAwakeEnabled;
+    form.rounds.disabled = form.isInfinite.checked;
+  }
+}
+
+function updateTimerDisplay() {
+  const timer = state.timerRun;
+  const hero = qs("#timer-run-hero");
+  const nameEl = qs("#timer-run-name");
+  const phaseEl = qs("#timer-phase-label");
+  const countdownEl = qs("#timer-countdown");
+  const roundEl = qs("#timer-round-meta");
+  const nextEl = qs("#timer-next-up");
+  const keepEl = qs("#timer-keep-awake");
+  const toggle = qs("#timer-toggle");
+  if (!timer) {
+    if (hero) hero.dataset.phase = "idle";
+    if (nameEl) nameEl.textContent = "Quick start";
+    if (phaseEl) phaseEl.textContent = "Ready";
+    if (countdownEl) countdownEl.textContent = "00:00";
+    if (roundEl) roundEl.textContent = "Round --";
+    if (nextEl) nextEl.textContent = "Next up --";
+    if (keepEl) keepEl.textContent = "Keep awake: --";
+    if (toggle) toggle.textContent = "Start";
+    return;
+  }
+
+  const now = Date.now();
+  const elapsed = now - timer.phaseStartedAt;
+  const remainingMs = Math.max(timer.phaseDurationMs - elapsed, 0);
+  if (hero) hero.dataset.phase = timer.phase;
+  if (nameEl) nameEl.textContent = timer.name;
+  if (phaseEl) phaseEl.textContent = timerPhaseLabel(timer.phase);
+  if (countdownEl) countdownEl.textContent = formatTimerSeconds(Math.ceil(remainingMs / 1000));
+  if (roundEl) roundEl.textContent = timerRoundMeta(timer);
+  if (nextEl) nextEl.textContent = timerNextPreview(timer);
+  if (keepEl) keepEl.textContent = `Keep awake: ${timer.settings.keepAwakeEnabled ? "On" : "Off"}`;
+  if (toggle) {
+    if (timer.phase === "complete") {
+      toggle.textContent = "Done";
+    } else {
+      toggle.textContent = timer.isPaused ? "Resume" : "Pause";
+    }
+  }
+}
+
+function renderTimerRun() {
+  const overlay = qs("#timer-lock-overlay");
+  if (overlay) overlay.hidden = !state.timerLock;
+  updateTimerDisplay();
+}
+
+async function requestWakeLock() {
+  if (!("wakeLock" in navigator)) return;
+  try {
+    timerWakeLock = await navigator.wakeLock.request("screen");
+    if (timerWakeLock) {
+      timerWakeLock.addEventListener("release", () => {
+        timerWakeLock = null;
+      });
+    }
+  } catch (error) {
+    timerWakeLock = null;
+  }
+}
+
+function releaseWakeLock() {
+  if (timerWakeLock) {
+    timerWakeLock.release().catch(() => {});
+    timerWakeLock = null;
+  }
+}
+
+function ensureAudioContext() {
+  if (!timerAudio) {
+    const AudioContext = window.AudioContext || window.webkitAudioContext;
+    if (!AudioContext) return null;
+    timerAudio = new AudioContext();
+  }
+  if (timerAudio.state === "suspended") {
+    timerAudio.resume().catch(() => {});
+  }
+  return timerAudio;
+}
+
+function playTone(frequency, duration = 0.12) {
+  const ctx = ensureAudioContext();
+  if (!ctx) return;
+  const oscillator = ctx.createOscillator();
+  const gain = ctx.createGain();
+  oscillator.frequency.value = frequency;
+  gain.gain.value = 0.08;
+  oscillator.connect(gain);
+  gain.connect(ctx.destination);
+  oscillator.start();
+  oscillator.stop(ctx.currentTime + duration);
+}
+
+function playTimerCue(type, settings) {
+  if (!settings?.soundEnabled) return;
+  if (type === "work") {
+    playTone(880, 0.12);
+    setTimeout(() => playTone(880, 0.12), 180);
+    return;
+  }
+  if (type === "rest") {
+    playTone(520, 0.12);
+    return;
+  }
+  if (type === "countdown") {
+    playTone(720, 0.08);
+    return;
+  }
+  playTone(640, 0.12);
+}
+
+function vibrateCue(type, settings) {
+  if (!settings?.vibrationEnabled || !("vibrate" in navigator)) return;
+  if (type === "work") {
+    navigator.vibrate([100, 80, 100]);
+    return;
+  }
+  if (type === "rest") {
+    navigator.vibrate([140]);
+    return;
+  }
+  if (type === "countdown") {
+    navigator.vibrate([60]);
+    return;
+  }
+  navigator.vibrate([80]);
+}
+
+function beginTimerLoop() {
+  if (timerRafId) cancelAnimationFrame(timerRafId);
+  const tick = () => {
+    const timer = state.timerRun;
+    if (!timer) return;
+    const now = Date.now();
+    if (timer.isPaused || timer.phase === "complete") {
+      timer.lastTickAt = now;
+      updateTimerDisplay();
+      timerRafId = null;
+      return;
+    }
+    const delta = now - timer.lastTickAt;
+    timer.lastTickAt = now;
+    if (timer.phase === "work") timer.elapsedWorkMs += delta;
+    if (timer.phase === "rest") timer.elapsedRestMs += delta;
+    if (timer.phase === "warmup") timer.elapsedWarmupMs += delta;
+    if (timer.phase === "cooldown") timer.elapsedCooldownMs += delta;
+
+    let elapsed = now - timer.phaseStartedAt;
+    while (timer.phaseDurationMs > 0 && elapsed >= timer.phaseDurationMs) {
+      const overshoot = elapsed - timer.phaseDurationMs;
+      const nextStart = now - overshoot;
+      advanceTimerPhase(timer, nextStart);
+      if (!state.timerRun) return;
+      elapsed = now - timer.phaseStartedAt;
+    }
+
+    const remainingMs = Math.max(timer.phaseDurationMs - elapsed, 0);
+    if (timer.settings.countdownEnabled) {
+      const remainingSec = Math.ceil(remainingMs / 1000);
+      if (remainingSec > 0 && remainingSec <= 3 && remainingSec !== timer.lastCountdownMark) {
+        timer.lastCountdownMark = remainingSec;
+        playTimerCue("countdown", timer.settings);
+        vibrateCue("countdown", timer.settings);
+      }
+    }
+
+    updateTimerDisplay();
+    const current = state.timerRun;
+    if (!current || current.isPaused || current.phase === "complete") {
+      timerRafId = null;
+      return;
+    }
+    timerRafId = requestAnimationFrame(tick);
+  };
+  timerRafId = requestAnimationFrame(tick);
+}
+
+function advanceTimerPhase(timer, nextStartAt) {
+  if (!timer) return;
+  if (timer.phase === "work") {
+    timer.roundsCompleted += 1;
+  }
+  const next = timerNextPhase(timer);
+  if (next === "complete") {
+    completeTimer();
+    return;
+  }
+  timer.phase = next;
+  timer.phaseDurationMs = timerPhaseDurationSec(timer, next) * 1000;
+  timer.phaseStartedAt = nextStartAt;
+  timer.lastCountdownMark = null;
+  playTimerCue(next, timer.settings);
+  vibrateCue(next, timer.settings);
+  if (timer.phaseDurationMs === 0) {
+    advanceTimerPhase(timer, nextStartAt);
+  }
+}
+
+function startTimerRun(program, { programId, name } = {}) {
+  const now = Date.now();
+  const settings = normalizeTimerSettings(program.settings);
+  const roundsTotal = program.isInfinite ? 0 : Number(program.rounds) || 0;
+  const timer = {
+    id: uuid(),
+    programId: programId || null,
+    name: name || program.name || "Quick start",
+    phase: settings.countdownEnabled ? "countdown" : program.warmupSec > 0 ? "warmup" : "work",
+    countdownSec: settings.countdownEnabled ? 3 : 0,
+    workSec: Number(program.workSec) || 0,
+    restSec: Number(program.restSec) || 0,
+    warmupSec: Number(program.warmupSec) || 0,
+    cooldownSec: Number(program.cooldownSec) || 0,
+    roundsTotal,
+    roundsCompleted: 0,
+    isInfinite: Boolean(program.isInfinite),
+    settings,
+    startedAt: now,
+    phaseStartedAt: now,
+    phaseDurationMs: 0,
+    lastTickAt: now,
+    lastCountdownMark: null,
+    elapsedWorkMs: 0,
+    elapsedRestMs: 0,
+    elapsedWarmupMs: 0,
+    elapsedCooldownMs: 0,
+    isPaused: false
+  };
+  timer.phaseDurationMs = timerPhaseDurationSec(timer, timer.phase) * 1000;
+  state.timerRun = timer;
+  state.timerLock = false;
+  updateTimerDisplay();
+  if (settings.keepAwakeEnabled) requestWakeLock();
+  setRoute("timer-run");
+  playTimerCue(timer.phase, settings);
+  vibrateCue(timer.phase, settings);
+  beginTimerLoop();
+}
+
+function pauseTimer() {
+  if (!state.timerRun || state.timerRun.isPaused || state.timerRun.phase === "complete") return;
+  state.timerRun.isPaused = true;
+  state.timerRun.pausedAt = Date.now();
+  releaseWakeLock();
+  updateTimerDisplay();
+}
+
+function resumeTimer() {
+  const timer = state.timerRun;
+  if (!timer || !timer.isPaused || timer.phase === "complete") return;
+  const now = Date.now();
+  const pauseDuration = now - (timer.pausedAt || now);
+  timer.phaseStartedAt += pauseDuration;
+  timer.lastTickAt = now;
+  timer.isPaused = false;
+  timer.pausedAt = null;
+  if (timer.settings.keepAwakeEnabled) requestWakeLock();
+  beginTimerLoop();
+}
+
+function skipTimerPhase() {
+  const timer = state.timerRun;
+  if (!timer || timer.phase === "complete") return;
+  const now = Date.now();
+  timer.lastTickAt = now;
+  advanceTimerPhase(timer, now);
+  updateTimerDisplay();
+}
+
+function adjustTimer(seconds) {
+  const timer = state.timerRun;
+  if (!timer || timer.phaseDurationMs <= 0) return;
+  timer.phaseDurationMs = Math.max(1000, timer.phaseDurationMs + seconds * 1000);
+  updateTimerDisplay();
+}
+
+async function stopTimerRun() {
+  const timer = state.timerRun;
+  if (!timer) return;
+  const confirmed = confirm("Stop the timer?");
+  if (!confirmed) return;
+  await finalizeTimer(true);
+  setRoute("timer");
+}
+
+async function completeTimer() {
+  await finalizeTimer(false);
+}
+
+async function finalizeTimer(stoppedEarly) {
+  const timer = state.timerRun;
+  if (!timer) return;
+  releaseWakeLock();
+  if (timerRafId) cancelAnimationFrame(timerRafId);
+  timerRafId = null;
+  const endedAt = new Date().toISOString();
+  const session = {
+    id: uuid(),
+    programId: timer.programId,
+    startedAt: new Date(timer.startedAt).toISOString(),
+    endedAt,
+    completedRounds: timer.roundsCompleted,
+    stoppedEarly,
+    totals: {
+      workTimeSec: Math.round(timer.elapsedWorkMs / 1000),
+      restTimeSec: Math.round(timer.elapsedRestMs / 1000)
+    }
+  };
+  timer.phase = "complete";
+  timer.isPaused = true;
+  timer.phaseDurationMs = 0;
+  state.timerRun = timer;
+  updateTimerDisplay();
+  await put("intervalSessions", session);
+  state.intervalSessions = await getAll("intervalSessions");
 }
 
 function updateGoalPercentSummary() {
@@ -3196,6 +3949,10 @@ function initActions() {
           form.meal.value = state.foodSearch.meal;
         }
       }
+      if (target === "timer-new") {
+        state.activeTimerId = null;
+        renderTimerForm();
+      }
       setRoute(target);
     });
   });
@@ -3590,6 +4347,9 @@ function initFab() {
       }
       qs("#food-quick-form input[name='kcal']").focus();
     }
+    if (action.dataset.fabAction === "start-timer") {
+      setRoute("timer");
+    }
     if (action.dataset.fabAction === "log-weight") {
       setRoute("weight");
       qs("#weight-form input[name='weight']").focus();
@@ -3913,6 +4673,221 @@ function initForms() {
   });
 
   qs("#export-report").addEventListener("click", exportReport);
+
+  const timerQuickForm = qs("#timer-quick-form");
+  if (timerQuickForm) {
+    timerQuickForm.addEventListener("input", () => {
+      const form = new FormData(timerQuickForm);
+      state.timerQuick = {
+        workSec: Number(form.get("workSec")) || 0,
+        restSec: Number(form.get("restSec")) || 0,
+        rounds: Number(form.get("rounds")) || 0,
+        warmupSec: Number(form.get("warmupSec")) || 0,
+        cooldownSec: Number(form.get("cooldownSec")) || 0,
+        isInfinite: form.get("isInfinite") === "on"
+      };
+      timerQuickForm.rounds.disabled = state.timerQuick.isInfinite;
+    });
+    timerQuickForm.addEventListener("submit", (event) => {
+      event.preventDefault();
+      const values = { ...state.timerQuick };
+      const error = validateTimerValues(values);
+      if (error) {
+        alert(error);
+        return;
+      }
+      startTimerRun(
+        {
+          name: "Quick start",
+          category: "Custom",
+          type: "simple",
+          workSec: values.workSec,
+          restSec: values.restSec,
+          rounds: values.rounds,
+          isInfinite: values.isInfinite,
+          warmupSec: values.warmupSec,
+          cooldownSec: values.cooldownSec,
+          settings: { ...DEFAULT_TIMER_SETTINGS }
+        },
+        { programId: null, name: "Quick start" }
+      );
+    });
+  }
+
+  const timerForm = qs("#timer-form");
+  if (timerForm) {
+    timerForm.addEventListener("input", () => {
+      timerForm.rounds.disabled = timerForm.isInfinite.checked;
+    });
+    timerForm.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      const form = new FormData(timerForm);
+      const values = {
+        name: String(form.get("name") || "").trim(),
+        category: form.get("category"),
+        workSec: Number(form.get("workSec")) || 0,
+        restSec: Number(form.get("restSec")) || 0,
+        rounds: Number(form.get("rounds")) || 0,
+        isInfinite: form.get("isInfinite") === "on",
+        warmupSec: Number(form.get("warmupSec")) || 0,
+        cooldownSec: Number(form.get("cooldownSec")) || 0,
+        settings: {
+          soundEnabled: form.get("soundEnabled") === "on",
+          vibrationEnabled: form.get("vibrationEnabled") === "on",
+          countdownEnabled: form.get("countdownEnabled") === "on",
+          keepAwakeEnabled: form.get("keepAwakeEnabled") === "on"
+        }
+      };
+      if (!values.name) {
+        alert("Name is required.");
+        return;
+      }
+      const error = validateTimerValues(values);
+      if (error) {
+        alert(error);
+        return;
+      }
+      const now = new Date().toISOString();
+      const programId = state.activeTimerId || uuid();
+      const program = {
+        id: programId,
+        name: values.name,
+        category: values.category,
+        type: "simple",
+        workSec: values.workSec,
+        restSec: values.restSec,
+        rounds: values.rounds,
+        isInfinite: values.isInfinite,
+        warmupSec: values.warmupSec,
+        cooldownSec: values.cooldownSec,
+        settings: normalizeTimerSettings(values.settings),
+        isBuiltIn: false,
+        isFavorite: false,
+        createdAt: state.activeTimerId ? state.intervalPrograms.find((p) => p.id === programId)?.createdAt : now,
+        updatedAt: now
+      };
+      await put("intervalPrograms", program);
+      state.intervalPrograms = await getAll("intervalPrograms");
+      state.activeTimerId = programId;
+      renderTimerHome();
+      renderTimerForm();
+      setRoute("timer");
+    });
+  }
+
+  const timerPresetWrap = qs("#timer-presets");
+  if (timerPresetWrap) {
+    timerPresetWrap.addEventListener("click", async (event) => {
+      const start = event.target.closest("[data-timer-start]");
+      const favorite = event.target.closest("[data-timer-favorite]");
+      const duplicate = event.target.closest("[data-timer-duplicate]");
+      if (start) {
+        const program = getTimerProgramById(start.dataset.timerStart);
+        if (program) startTimerRun(program, { programId: program.id });
+        return;
+      }
+      if (favorite) {
+        const program = getTimerProgramById(favorite.dataset.timerFavorite);
+        if (!program) return;
+        program.isFavorite = !program.isFavorite;
+        program.updatedAt = new Date().toISOString();
+        await put("intervalPrograms", program);
+        state.intervalPrograms = await getAll("intervalPrograms");
+        renderTimerHome();
+        return;
+      }
+      if (duplicate) {
+        const program = getTimerProgramById(duplicate.dataset.timerDuplicate);
+        if (!program) return;
+        const now = new Date().toISOString();
+        const copy = {
+          ...program,
+          id: uuid(),
+          name: `${program.name} copy`,
+          isBuiltIn: false,
+          isFavorite: false,
+          createdAt: now,
+          updatedAt: now
+        };
+        await put("intervalPrograms", copy);
+        state.intervalPrograms = await getAll("intervalPrograms");
+        renderTimerHome();
+      }
+    });
+  }
+
+  const timerProgramWrap = qs("#timer-programs");
+  if (timerProgramWrap) {
+    timerProgramWrap.addEventListener("click", async (event) => {
+      const start = event.target.closest("[data-timer-start]");
+      const edit = event.target.closest("[data-timer-edit]");
+      const favorite = event.target.closest("[data-timer-favorite]");
+      if (start) {
+        const program = getTimerProgramById(start.dataset.timerStart);
+        if (program) startTimerRun(program, { programId: program.id });
+        return;
+      }
+      if (edit) {
+        state.activeTimerId = edit.dataset.timerEdit;
+        renderTimerForm();
+        setRoute("timer-new");
+        return;
+      }
+      if (favorite) {
+        const program = getTimerProgramById(favorite.dataset.timerFavorite);
+        if (!program) return;
+        program.isFavorite = !program.isFavorite;
+        program.updatedAt = new Date().toISOString();
+        await put("intervalPrograms", program);
+        state.intervalPrograms = await getAll("intervalPrograms");
+        renderTimerHome();
+      }
+    });
+  }
+
+  const timerToggle = qs("#timer-toggle");
+  if (timerToggle) {
+    timerToggle.addEventListener("click", () => {
+      if (!state.timerRun || state.timerRun.phase === "complete") return;
+      if (state.timerRun.isPaused) {
+        resumeTimer();
+      } else {
+        pauseTimer();
+      }
+    });
+  }
+  const timerSkip = qs("#timer-skip");
+  if (timerSkip) timerSkip.addEventListener("click", skipTimerPhase);
+  const timerStop = qs("#timer-stop");
+  if (timerStop) timerStop.addEventListener("click", stopTimerRun);
+  const timerPlus = qs("#timer-plus");
+  if (timerPlus) timerPlus.addEventListener("click", () => adjustTimer(10));
+  const timerMinus = qs("#timer-minus");
+  if (timerMinus) timerMinus.addEventListener("click", () => adjustTimer(-10));
+
+  const timerLock = qs("#timer-lock");
+  const timerUnlock = qs("#timer-unlock");
+  const timerLockOverlay = qs("#timer-lock-overlay");
+  if (timerLock) {
+    timerLock.addEventListener("click", () => {
+      state.timerLock = true;
+      if (timerLockOverlay) timerLockOverlay.hidden = false;
+    });
+  }
+  if (timerUnlock) {
+    timerUnlock.addEventListener("click", () => {
+      state.timerLock = false;
+      if (timerLockOverlay) timerLockOverlay.hidden = true;
+    });
+  }
+  if (timerLockOverlay) {
+    timerLockOverlay.addEventListener("click", (event) => {
+      if (event.target === timerLockOverlay) {
+        state.timerLock = false;
+        timerLockOverlay.hidden = true;
+      }
+    });
+  }
 
   qs("#progression-list").addEventListener("click", (event) => {
     const button = event.target.closest("[data-progression]");
@@ -4980,6 +5955,12 @@ function init() {
   initRouter();
   initActions();
   initFab();
+  document.addEventListener("visibilitychange", () => {
+    const timer = state.timerRun;
+    if (!document.hidden && timer && !timer.isPaused && timer.settings.keepAwakeEnabled) {
+      requestWakeLock();
+    }
+  });
   seedData()
     .then(loadState)
     .then(async () => {
