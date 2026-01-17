@@ -58,7 +58,9 @@
             <div class="card-header">
               <div>
                 <h2>Food today</h2>
-                <p class="muted" id="today-food-meta">0 kcal | P 0g C 0g F 0g</p>
+                <p class="muted" id="today-food-meta">0 kcal</p>
+                <p class="muted" id="today-food-macros">P 0g C 0g F 0g</p>
+                <p class="muted" id="today-food-remaining">0 kcal remaining</p>
               </div>
               <button class="ghost" type="button" data-route-jump="food">Log</button>
             </div>
@@ -298,10 +300,67 @@
             <div class="card-header">
               <div>
                 <p class="eyebrow">Food today</p>
-                <h2 id="food-today-kcal">0 kcal</h2>
-                <p class="muted" id="food-today-remaining">Remaining 0 kcal</p>
+                <h2>Calories</h2>
+                <p class="muted" id="food-target-note">Estimate</p>
               </div>
-              <button class="ghost" type="button" data-route-jump="food-search">Add food</button>
+              <button class="ghost" type="button" data-route-jump="food-goals">Edit target</button>
+            </div>
+            <div class="food-hero">
+              <div class="food-donut-wrap">
+                <div class="food-donut" id="food-donut">
+                  <div class="donut-center">
+                    <strong id="food-donut-value">-- / --</strong>
+                    <span class="muted">kcal</span>
+                  </div>
+                </div>
+                <p class="muted" id="food-donut-over" hidden>+0 over</p>
+                <p class="muted" id="food-donut-empty" hidden>Finish your profile to estimate a target.</p>
+              </div>
+              <div class="food-hero-meta">
+                <p class="muted" id="food-today-kcal">0 kcal</p>
+                <p class="muted" id="food-today-macros">P 0g C 0g F 0g</p>
+                <p class="muted" id="food-today-remaining">Remaining 0 kcal</p>
+                <p class="muted" id="food-target-nudge" hidden>Check profile settings</p>
+                <div class="actions">
+                  <button class="ghost" type="button" data-route-jump="food-search">Add food</button>
+                </div>
+              </div>
+            </div>
+            <div class="macro-visuals">
+              <div class="macro-visuals-header">
+                <p class="muted">Macros today</p>
+                <button class="link-button" type="button" data-route-jump="food-goals">Edit macro targets</button>
+              </div>
+              <div class="macro-donut-grid" id="macro-donut-grid">
+                <div class="macro-donut-card">
+                  <div class="macro-donut-mini" id="macro-donut-protein"></div>
+                  <div class="macro-donut-label" id="macro-label-protein">Protein</div>
+                  <div class="macro-donut-value" id="macro-value-protein">0 / 0 g</div>
+                  <div class="macro-donut-over muted" id="macro-over-protein" hidden>+0 g over</div>
+                  <div class="macro-donut-empty muted" id="macro-empty-protein" hidden>Set target</div>
+                </div>
+                <div class="macro-donut-card">
+                  <div class="macro-donut-mini" id="macro-donut-carbs"></div>
+                  <div class="macro-donut-label" id="macro-label-carbs">Carbs</div>
+                  <div class="macro-donut-value" id="macro-value-carbs">0 / 0 g</div>
+                  <div class="macro-donut-over muted" id="macro-over-carbs" hidden>+0 g over</div>
+                  <div class="macro-donut-empty muted" id="macro-empty-carbs" hidden>Set target</div>
+                </div>
+                <div class="macro-donut-card">
+                  <div class="macro-donut-mini" id="macro-donut-fat"></div>
+                  <div class="macro-donut-label" id="macro-label-fat">Fat</div>
+                  <div class="macro-donut-value" id="macro-value-fat">0 / 0 g</div>
+                  <div class="macro-donut-over muted" id="macro-over-fat" hidden>+0 g over</div>
+                  <div class="macro-donut-empty muted" id="macro-empty-fat" hidden>Set target</div>
+                </div>
+                <div class="macro-donut-card">
+                  <div class="macro-donut-mini" id="macro-donut-fiber"></div>
+                  <div class="macro-donut-label" id="macro-label-fiber">Fiber</div>
+                  <div class="macro-donut-value" id="macro-value-fiber">0 / 0 g</div>
+                  <div class="macro-donut-over muted" id="macro-over-fiber" hidden>+0 g over</div>
+                  <div class="macro-donut-empty muted" id="macro-empty-fiber" hidden>Set target</div>
+                </div>
+              </div>
             </div>
             <div class="macro-row" id="food-macro-row">
               <div class="macro-pill" id="food-macro-protein">P 0g</div>
@@ -573,25 +632,43 @@
           <div class="card">
             <h2>Nutrition goals</h2>
             <form id="food-goals-form" class="form-grid">
+              <div>
+                <p class="muted">Target calories</p>
+                <div class="segmented" id="food-target-mode" role="tablist" aria-label="Target mode">
+                  <button type="button" data-target-mode="auto" aria-pressed="true">Auto (estimate)</button>
+                  <button type="button" data-target-mode="manual">Manual</button>
+                </div>
+              </div>
+              <div class="summary" id="food-target-estimate">Estimate: --</div>
+              <div class="summary" id="food-target-details">BMR -- | TDEE -- | Adjustment --</div>
+              <p class="muted" id="food-target-warning" hidden>Check profile settings</p>
+              <p class="muted" id="food-target-empty" hidden>Complete your profile to calculate an estimate.</p>
+              <label id="food-manual-target-wrap">
+                Manual target (kcal)
+                <input type="number" name="manualKcalTarget" min="0" step="10" />
+              </label>
+              <label id="food-weekly-rate-wrap">
+                Weekly rate (kg/week)
+                <input type="number" name="weeklyRateKg" min="0" step="0.1" />
+              </label>
+              <div class="summary" id="food-manual-target-hint"></div>
+              <button class="ghost" type="button" id="food-edit-profile">Edit profile</button>
+              <p class="muted">Macro targets (grams/day)</p>
               <label>
-                Daily calories (kcal)
-                <input type="number" name="dailyKcalGoal" min="0" step="10" />
+                Protein target (g)
+                <input type="number" name="proteinTargetG" min="0" step="1" />
               </label>
               <label>
-                Protein goal (g)
-                <input type="number" name="proteinGoalG" min="0" step="1" />
+                Carbs target (g)
+                <input type="number" name="carbsTargetG" min="0" step="1" />
               </label>
               <label>
-                Carbs goal (g)
-                <input type="number" name="carbsGoalG" min="0" step="1" />
+                Fat target (g)
+                <input type="number" name="fatTargetG" min="0" step="1" />
               </label>
               <label>
-                Fat goal (g)
-                <input type="number" name="fatGoalG" min="0" step="1" />
-              </label>
-              <label>
-                Fiber goal (g)
-                <input type="number" name="fiberGoalG" min="0" step="1" />
+                Fiber target (g)
+                <input type="number" name="fiberTargetG" min="0" step="1" />
               </label>
               <label class="checkbox">
                 <input type="checkbox" name="showPercent" />

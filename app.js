@@ -56,6 +56,9 @@ const ACTIVITY_FACTORS = {
   athlete: 1.9
 };
 
+const DEFAULT_CUT_DEFICIT = 500;
+const DEFAULT_GAIN_SURPLUS = 250;
+
 const DEFAULT_SETTINGS = {
   id: "default",
   profileId: "primary",
@@ -102,9 +105,27 @@ const MEAL_LABELS = {
   custom: "Custom"
 };
 
+const MACRO_VISUALS = [
+  { key: "protein", label: "Protein", short: "P" },
+  { key: "carbs", label: "Carbs", short: "C" },
+  { key: "fat", label: "Fat", short: "F" },
+  { key: "fiber", label: "Fiber", short: "Fi" }
+];
+
 const DEFAULT_NUTRITION_GOALS = {
   id: "default",
-  dailyKcalGoal: 2000,
+  targetKcalMode: "auto",
+  computedKcalTarget: null,
+  manualKcalTarget: null,
+  bmrEstimate: null,
+  tdeeEstimate: null,
+  goalAdjustmentKcal: null,
+  weeklyRateKg: null,
+  macroTargetMode: "manual",
+  proteinTargetG: 150,
+  carbsTargetG: 220,
+  fatTargetG: 70,
+  fiberTargetG: 25,
   proteinGoalG: 150,
   carbsGoalG: 220,
   fatGoalG: 70,
@@ -556,6 +577,7 @@ let prefersReduced = null;
 let activeExerciseId = null;
 let captionTimer = null;
 let toastTimer = null;
+let donutRenderer = null;
 const foodSwipeStart = new Map();
 
 const routes = [
@@ -708,6 +730,63 @@ function calculateTDEE(profile) {
   return bmr * factor;
 }
 
+function roundToNearest(value, step = 10) {
+  const numeric = Number(value);
+  if (!Number.isFinite(numeric)) return 0;
+  return Math.round(numeric / step) * step;
+}
+
+function calculateGoalAdjustment(profile, weeklyRateKg) {
+  if (!profile || !profile.goalType) return 0;
+  if (profile.goalType === "maintain") return 0;
+  const rate = Number(weeklyRateKg) || 0;
+  if (rate > 0) {
+    const daily = (7700 * rate) / 7;
+    return profile.goalType === "cut" ? -daily : daily;
+  }
+  if (profile.goalType === "cut") return -DEFAULT_CUT_DEFICIT;
+  if (profile.goalType === "gain") return DEFAULT_GAIN_SURPLUS;
+  return 0;
+}
+
+function calculateAutoTarget(profile, goals = {}) {
+  const bmr = calculateBMR(profile);
+  const tdee = calculateTDEE(profile);
+  if (!bmr || !tdee) {
+    return {
+      target: null,
+      bmr: bmr ? Math.round(bmr) : null,
+      tdee: tdee ? Math.round(tdee) : null,
+      adjustment: null
+    };
+  }
+  const adjustment = calculateGoalAdjustment(profile, goals.weeklyRateKg);
+  const target = Math.max(0, roundToNearest(tdee + adjustment, 10));
+  return {
+    target,
+    bmr: Math.round(bmr),
+    tdee: Math.round(tdee),
+    adjustment: Math.round(adjustment)
+  };
+}
+
+function resolveTargetKcal(goals) {
+  if (!goals) {
+    return { target: 0, mode: "auto", manual: 0, computed: 0, hasTarget: false };
+  }
+  const mode = goals.targetKcalMode === "manual" ? "manual" : "auto";
+  const manual = Number(goals.manualKcalTarget) || 0;
+  const computed = Number(goals.computedKcalTarget) || 0;
+  const target = mode === "manual" ? manual : computed;
+  return { target, mode, manual, computed, hasTarget: Boolean(target) };
+}
+
+function getTargetWarning(target) {
+  if (!target) return "";
+  if (target < 1200 || target > 4500) return "Check profile settings";
+  return "";
+}
+
 function formatDuration(ms) {
   if (ms == null) return "--";
   const totalMinutes = Math.floor(ms / 60000);
@@ -758,12 +837,14 @@ function scaleMacros(macros, factor) {
 
 function getMacroGoals() {
   const goals = state.nutritionGoals || DEFAULT_NUTRITION_GOALS;
+  const target = resolveTargetKcal(goals);
   return {
-    calories: Number(goals.dailyKcalGoal) || 0,
-    protein: Number(goals.proteinGoalG) || 0,
-    carbs: Number(goals.carbsGoalG) || 0,
-    fat: Number(goals.fatGoalG) || 0,
-    fiber: Number(goals.fiberGoalG) || 0
+    calories: target.target,
+    targetMode: target.mode,
+    protein: Number(goals.proteinTargetG ?? goals.proteinGoalG) || 0,
+    carbs: Number(goals.carbsTargetG ?? goals.carbsGoalG) || 0,
+    fat: Number(goals.fatTargetG ?? goals.fatGoalG) || 0,
+    fiber: Number(goals.fiberTargetG ?? goals.fiberGoalG) || 0
   };
 }
 
@@ -1073,6 +1154,10 @@ async function loadState() {
     reminders: { ...DEFAULT_SETTINGS.reminders, ...(savedSettings?.reminders || {}) },
     quietHours: { ...DEFAULT_SETTINGS.quietHours, ...(savedSettings?.quietHours || {}) }
   };
+  const legacyCalorieGoal = savedSettings?.calorieGoal;
+  const legacyProteinGoal = savedSettings?.proteinGoal;
+  const legacyCarbGoal = savedSettings?.carbGoal;
+  const legacyFatGoal = savedSettings?.fatGoal;
   if (savedSettings?.autoplayDemos == null && prefersReduced?.matches) {
     state.settings.autoplayDemos = false;
   }
@@ -1098,20 +1183,79 @@ async function loadState() {
   if (!state.nutritionGoals) {
     const fallback = {
       ...DEFAULT_NUTRITION_GOALS,
-      dailyKcalGoal: Number(state.settings.calorieGoal) || DEFAULT_NUTRITION_GOALS.dailyKcalGoal,
-      proteinGoalG: Number(state.settings.proteinGoal) || DEFAULT_NUTRITION_GOALS.proteinGoalG,
-      carbsGoalG: Number(state.settings.carbGoal) || DEFAULT_NUTRITION_GOALS.carbsGoalG,
-      fatGoalG: Number(state.settings.fatGoal) || DEFAULT_NUTRITION_GOALS.fatGoalG,
+      targetKcalMode: state.profile ? "auto" : "manual",
+      manualKcalTarget: legacyCalorieGoal != null ? Number(legacyCalorieGoal) || null : null,
+      macroTargetMode: "manual",
+      proteinTargetG:
+        legacyProteinGoal != null ? Number(legacyProteinGoal) || 0 : DEFAULT_NUTRITION_GOALS.proteinTargetG,
+      carbsTargetG: legacyCarbGoal != null ? Number(legacyCarbGoal) || 0 : DEFAULT_NUTRITION_GOALS.carbsTargetG,
+      fatTargetG: legacyFatGoal != null ? Number(legacyFatGoal) || 0 : DEFAULT_NUTRITION_GOALS.fatTargetG,
+      fiberTargetG: DEFAULT_NUTRITION_GOALS.fiberTargetG,
+      proteinGoalG:
+        legacyProteinGoal != null ? Number(legacyProteinGoal) || 0 : DEFAULT_NUTRITION_GOALS.proteinGoalG,
+      carbsGoalG: legacyCarbGoal != null ? Number(legacyCarbGoal) || 0 : DEFAULT_NUTRITION_GOALS.carbsGoalG,
+      fatGoalG: legacyFatGoal != null ? Number(legacyFatGoal) || 0 : DEFAULT_NUTRITION_GOALS.fatGoalG,
+      fiberGoalG: DEFAULT_NUTRITION_GOALS.fiberGoalG,
       updatedAt: new Date().toISOString()
     };
-    state.nutritionGoals = fallback;
-    await put("nutritionGoals", fallback);
+    const auto = calculateAutoTarget(state.profile, fallback);
+    const merged = {
+      ...fallback,
+      computedKcalTarget: auto.target,
+      bmrEstimate: auto.bmr,
+      tdeeEstimate: auto.tdee,
+      goalAdjustmentKcal: auto.adjustment
+    };
+    state.nutritionGoals = merged;
+    await put("nutritionGoals", merged);
   } else {
     const normalized = {
       ...DEFAULT_NUTRITION_GOALS,
       ...state.nutritionGoals,
       updatedAt: state.nutritionGoals.updatedAt || new Date().toISOString()
     };
+    if (!normalized.targetKcalMode) {
+      normalized.targetKcalMode = "manual";
+    }
+    if (!normalized.macroTargetMode) {
+      normalized.macroTargetMode = "manual";
+    }
+    if (normalized.manualKcalTarget == null && state.nutritionGoals.dailyKcalGoal != null) {
+      normalized.manualKcalTarget = Number(state.nutritionGoals.dailyKcalGoal) || 0;
+    }
+    if (normalized.manualKcalTarget == null) {
+      normalized.manualKcalTarget = legacyCalorieGoal != null ? Number(legacyCalorieGoal) || null : null;
+    }
+    if (normalized.proteinTargetG == null && normalized.proteinGoalG != null) {
+      normalized.proteinTargetG = Number(normalized.proteinGoalG) || 0;
+    }
+    if (normalized.carbsTargetG == null && normalized.carbsGoalG != null) {
+      normalized.carbsTargetG = Number(normalized.carbsGoalG) || 0;
+    }
+    if (normalized.fatTargetG == null && normalized.fatGoalG != null) {
+      normalized.fatTargetG = Number(normalized.fatGoalG) || 0;
+    }
+    if (normalized.fiberTargetG == null && normalized.fiberGoalG != null) {
+      normalized.fiberTargetG = Number(normalized.fiberGoalG) || 0;
+    }
+    if (normalized.proteinTargetG == null && legacyProteinGoal != null) {
+      normalized.proteinTargetG = Number(legacyProteinGoal) || 0;
+    }
+    if (normalized.carbsTargetG == null && legacyCarbGoal != null) {
+      normalized.carbsTargetG = Number(legacyCarbGoal) || 0;
+    }
+    if (normalized.fatTargetG == null && legacyFatGoal != null) {
+      normalized.fatTargetG = Number(legacyFatGoal) || 0;
+    }
+    normalized.proteinGoalG = normalized.proteinTargetG;
+    normalized.carbsGoalG = normalized.carbsTargetG;
+    normalized.fatGoalG = normalized.fatTargetG;
+    normalized.fiberGoalG = normalized.fiberTargetG;
+    const auto = calculateAutoTarget(state.profile, normalized);
+    normalized.computedKcalTarget = auto.target;
+    normalized.bmrEstimate = auto.bmr;
+    normalized.tdeeEstimate = auto.tdee;
+    normalized.goalAdjustmentKcal = auto.adjustment;
     state.nutritionGoals = normalized;
     await put("nutritionGoals", normalized);
   }
@@ -1173,6 +1317,13 @@ async function seedFoodDatabase() {
   }
   renderFoodSearch();
   renderFoodLibrary();
+}
+
+async function loadDonutRenderer() {
+  if (donutRenderer) return donutRenderer;
+  const module = await import("/food-chart.js");
+  donutRenderer = module.renderDonutChart;
+  return donutRenderer;
 }
 
 function render() {
@@ -1240,11 +1391,27 @@ function renderDashboard() {
   const foodKey = foodDateKey(new Date());
   const foodTotals = getFoodTotals(foodKey);
   const goals = getMacroGoals();
+  const targetInfo = resolveTargetKcal(state.nutritionGoals || DEFAULT_NUTRITION_GOALS);
   const foodMeta = qs("#today-food-meta");
   if (foodMeta) {
-    foodMeta.textContent = `${formatKcal(foodTotals.kcal)} kcal | P ${formatMacro(foodTotals.protein)}g C ${formatMacro(
-      foodTotals.carbs
-    )}g F ${formatMacro(foodTotals.fat)}g`;
+    foodMeta.textContent = targetInfo.hasTarget
+      ? `${formatKcal(foodTotals.kcal)} / ${formatKcal(targetInfo.target)} kcal`
+      : `${formatKcal(foodTotals.kcal)} kcal`;
+  }
+  const foodMacros = qs("#today-food-macros");
+  if (foodMacros) {
+    foodMacros.textContent = `P ${formatMacro(foodTotals.protein)}g C ${formatMacro(foodTotals.carbs)}g F ${formatMacro(
+      foodTotals.fat
+    )}g`;
+  }
+  const foodRemaining = qs("#today-food-remaining");
+  if (foodRemaining) {
+    if (!targetInfo.hasTarget) {
+      foodRemaining.textContent = "Set a calorie target";
+    } else {
+      const remaining = Math.max(targetInfo.target - foodTotals.kcal, 0);
+      foodRemaining.textContent = `${formatKcal(remaining)} kcal remaining`;
+    }
   }
   const calorieBar = qs("#today-food-bar");
   if (calorieBar) {
@@ -1465,6 +1632,62 @@ function formatFoodMacroLine(macros) {
   return line;
 }
 
+function renderMacroVisuals(totals, goals) {
+  const grid = qs("#macro-donut-grid");
+  if (!grid) return;
+  const isCompact = state.settings.density === "compact";
+  const foodRoute = qs(".route[data-route=\"food\"]");
+  const foodVisible = foodRoute ? !foodRoute.hidden : true;
+
+  const updateMacro = (renderDonut) => {
+    MACRO_VISUALS.forEach((macro) => {
+      const consumed = Number(totals[macro.key]) || 0;
+      const target = Number(goals[macro.key]) || 0;
+      const hasTarget = target > 0;
+      const over = hasTarget ? Math.max(consumed - target, 0) : 0;
+
+      const labelEl = qs(`#macro-label-${macro.key}`);
+      if (labelEl) labelEl.textContent = isCompact ? macro.short : macro.label;
+
+      const valueEl = qs(`#macro-value-${macro.key}`);
+      if (valueEl) {
+        valueEl.textContent = hasTarget
+          ? `${formatMacro(consumed)} / ${formatMacro(target)} g`
+          : `${formatMacro(consumed)} g`;
+      }
+
+      const overEl = qs(`#macro-over-${macro.key}`);
+      if (overEl) {
+        overEl.hidden = over <= 0;
+        if (over > 0) overEl.textContent = `+${formatMacro(over)} g over`;
+      }
+
+      const emptyEl = qs(`#macro-empty-${macro.key}`);
+      if (emptyEl) emptyEl.hidden = hasTarget;
+
+      const donutEl = qs(`#macro-donut-${macro.key}`);
+      if (donutEl) {
+        donutEl.setAttribute("role", "img");
+        donutEl.setAttribute(
+          "aria-label",
+          hasTarget
+            ? `${macro.label}: ${formatMacro(consumed)} grams of ${formatMacro(target)} grams`
+            : `${macro.label}: ${formatMacro(consumed)} grams, target not set`
+        );
+        if (renderDonut && foodVisible) {
+          renderDonut(donutEl, { consumed, target });
+        }
+      }
+    });
+  };
+
+  if (foodVisible) {
+    loadDonutRenderer().then(updateMacro);
+  } else {
+    updateMacro(null);
+  }
+}
+
 function formatFoodLogSummary(entry) {
   const name = getFoodLogSourceName(entry);
   const macros = entry?.computedMacros || emptyMacros();
@@ -1492,26 +1715,75 @@ function renderFood() {
   const dayKey = foodDateKey(new Date());
   const totals = getFoodTotals(dayKey);
   const goals = getMacroGoals();
+  const targetInfo = resolveTargetKcal(state.nutritionGoals || DEFAULT_NUTRITION_GOALS);
+  const target = targetInfo.target;
+  const hasTarget = targetInfo.hasTarget;
+  const autoEstimate = calculateAutoTarget(state.profile, state.nutritionGoals || DEFAULT_NUTRITION_GOALS);
+  const needsProfile = targetInfo.mode === "auto" && !autoEstimate.target;
 
   kcalEl.textContent = `${formatKcal(totals.kcal)} kcal`;
+  const macroLineEl = qs("#food-today-macros");
+  if (macroLineEl) {
+    macroLineEl.textContent = `P ${formatMacro(totals.protein)}g C ${formatMacro(totals.carbs)}g F ${formatMacro(
+      totals.fat
+    )}g`;
+  }
   const remainingEl = qs("#food-today-remaining");
   if (remainingEl) {
-    if (!goals.calories) {
-      remainingEl.textContent = "Set a calorie goal";
+    if (!hasTarget) {
+      remainingEl.textContent = needsProfile
+        ? "Finish your profile to estimate a target."
+        : "Set a calorie target.";
     } else {
-      const remaining = goals.calories - totals.kcal;
-      if (remaining >= 0) {
-        remainingEl.textContent = `Remaining ${formatKcal(remaining)} kcal`;
-      } else {
-        remainingEl.textContent = `Over by ${formatKcal(Math.abs(remaining))} kcal`;
-      }
+      const remaining = Math.max(target - totals.kcal, 0);
+      remainingEl.textContent = `Remaining ${formatKcal(remaining)} kcal`;
     }
+  }
+  const donutValue = qs("#food-donut-value");
+  if (donutValue) {
+    donutValue.textContent = hasTarget ? `${formatKcal(totals.kcal)} / ${formatKcal(target)}` : "-- / --";
+  }
+  const donutOver = qs("#food-donut-over");
+  if (donutOver) {
+    const over = hasTarget ? Math.max(totals.kcal - target, 0) : 0;
+    donutOver.hidden = over <= 0;
+    if (over > 0) donutOver.textContent = `+${formatKcal(over)} over`;
+  }
+  const donutEmpty = qs("#food-donut-empty");
+  if (donutEmpty) {
+    donutEmpty.hidden = hasTarget;
+    if (!hasTarget) {
+      donutEmpty.textContent = needsProfile
+        ? "Finish your profile to estimate a target."
+        : "Set a calorie target to see progress.";
+    }
+  }
+  const targetNote = qs("#food-target-note");
+  if (targetNote) {
+    targetNote.textContent = targetInfo.mode === "auto" ? "Estimate" : "Manual target";
+    targetNote.hidden = !hasTarget && targetInfo.mode !== "auto";
+  }
+  const targetNudge = qs("#food-target-nudge");
+  if (targetNudge) {
+    const warning = getTargetWarning(target);
+    targetNudge.textContent = warning;
+    targetNudge.hidden = !warning;
+  }
+  const donutWrap = qs("#food-donut");
+  const foodRoute = qs(".route[data-route=\"food\"]");
+  const foodVisible = foodRoute ? !foodRoute.hidden : true;
+  if (donutWrap && foodVisible) {
+    loadDonutRenderer().then((renderDonut) => {
+      renderDonut(donutWrap, { consumed: totals.kcal, target });
+    });
   }
 
   const disclaimer = qs("#food-disclaimer");
   if (disclaimer) {
     disclaimer.hidden = Boolean(state.settings.foodDisclaimerDismissed);
   }
+
+  renderMacroVisuals(totals, goals);
 
   const proteinEl = qs("#food-macro-protein");
   const carbsEl = qs("#food-macro-carbs");
@@ -1522,20 +1794,32 @@ function renderFood() {
   if (fatEl) fatEl.textContent = `F ${formatMacro(totals.fat)}g`;
   if (fiberEl) fiberEl.textContent = `Fi ${formatMacro(totals.fiber)}g`;
 
-  qs("#food-protein-bar").style.width = `${macroProgress(totals.protein, goals.protein)}%`;
-  qs("#food-carbs-bar").style.width = `${macroProgress(totals.carbs, goals.carbs)}%`;
-  qs("#food-fat-bar").style.width = `${macroProgress(totals.fat, goals.fat)}%`;
-  qs("#food-protein-meta").textContent = `${formatMacro(totals.protein)} / ${formatMacro(goals.protein)} g`;
-  qs("#food-carbs-meta").textContent = `${formatMacro(totals.carbs)} / ${formatMacro(goals.carbs)} g`;
-  qs("#food-fat-meta").textContent = `${formatMacro(totals.fat)} / ${formatMacro(goals.fat)} g`;
+  const proteinGoal = Number(goals.protein) || 0;
+  const carbsGoal = Number(goals.carbs) || 0;
+  const fatGoal = Number(goals.fat) || 0;
+  qs("#food-protein-bar").style.width = `${macroProgress(totals.protein, proteinGoal)}%`;
+  qs("#food-carbs-bar").style.width = `${macroProgress(totals.carbs, carbsGoal)}%`;
+  qs("#food-fat-bar").style.width = `${macroProgress(totals.fat, fatGoal)}%`;
+  qs("#food-protein-meta").textContent = proteinGoal
+    ? `${formatMacro(totals.protein)} / ${formatMacro(proteinGoal)} g`
+    : "Set target";
+  qs("#food-carbs-meta").textContent = carbsGoal
+    ? `${formatMacro(totals.carbs)} / ${formatMacro(carbsGoal)} g`
+    : "Set target";
+  qs("#food-fat-meta").textContent = fatGoal
+    ? `${formatMacro(totals.fat)} / ${formatMacro(fatGoal)} g`
+    : "Set target";
 
-  const showFiber = Number(goals.fiber) > 0 || Number(totals.fiber) > 0;
+  const fiberGoal = Number(goals.fiber) || 0;
+  const showFiber = fiberGoal > 0 || Number(totals.fiber) > 0;
   const fiberWrap = qs("#food-fiber-wrap");
   if (fiberWrap) fiberWrap.hidden = !showFiber;
   if (fiberEl) fiberEl.hidden = !showFiber;
   if (showFiber) {
-    qs("#food-fiber-bar").style.width = `${macroProgress(totals.fiber, goals.fiber)}%`;
-    qs("#food-fiber-meta").textContent = `${formatMacro(totals.fiber)} / ${formatMacro(goals.fiber)} g`;
+    qs("#food-fiber-bar").style.width = `${macroProgress(totals.fiber, fiberGoal)}%`;
+    qs("#food-fiber-meta").textContent = fiberGoal
+      ? `${formatMacro(totals.fiber)} / ${formatMacro(fiberGoal)} g`
+      : "Set target";
   }
 
   const entries = state.foodLogs
@@ -1805,10 +2089,15 @@ function updateGoalPercentSummary() {
     summary.textContent = "";
     return;
   }
-  const kcalGoal = Number(form.dailyKcalGoal.value) || 0;
-  const protein = Number(form.proteinGoalG.value) || 0;
-  const carbs = Number(form.carbsGoalG.value) || 0;
-  const fat = Number(form.fatGoalG.value) || 0;
+  const modeButton = form.querySelector("[data-target-mode][aria-pressed=\"true\"]");
+  const mode = modeButton?.dataset.targetMode || "auto";
+  const manualTarget = Number(form.manualKcalTarget?.value) || 0;
+  const weeklyRate = Number(form.weeklyRateKg?.value) || 0;
+  const auto = calculateAutoTarget(state.profile, { weeklyRateKg: weeklyRate });
+  const kcalGoal = mode === "manual" ? manualTarget : Number(auto.target) || 0;
+  const protein = Number(form.proteinTargetG.value) || 0;
+  const carbs = Number(form.carbsTargetG.value) || 0;
+  const fat = Number(form.fatTargetG.value) || 0;
   const macroCalories = protein * 4 + carbs * 4 + fat * 9;
   const base = kcalGoal || macroCalories;
   if (!base) {
@@ -1821,15 +2110,70 @@ function updateGoalPercentSummary() {
   summary.textContent = `Macro split: P ${pPct}% | C ${cPct}% | F ${fPct}%`;
 }
 
+function setFoodTargetMode(mode) {
+  qsa("#food-target-mode button").forEach((button) => {
+    button.setAttribute("aria-pressed", button.dataset.targetMode === mode);
+  });
+  const manualWrap = qs("#food-manual-target-wrap");
+  if (manualWrap) manualWrap.hidden = mode !== "manual";
+  const weeklyWrap = qs("#food-weekly-rate-wrap");
+  if (weeklyWrap) weeklyWrap.hidden = mode !== "auto";
+}
+
+function updateFoodTargetPreview() {
+  const form = qs("#food-goals-form");
+  if (!form) return;
+  const modeButton = form.querySelector("[data-target-mode][aria-pressed=\"true\"]");
+  const mode = modeButton?.dataset.targetMode || "auto";
+  const manualTarget = Number(form.manualKcalTarget?.value) || 0;
+  const weeklyRate = Number(form.weeklyRateKg?.value) || 0;
+  const estimate = calculateAutoTarget(state.profile, { weeklyRateKg: weeklyRate });
+  const targetSummary = qs("#food-target-estimate");
+  const detailSummary = qs("#food-target-details");
+  const warning = qs("#food-target-warning");
+  const emptyState = qs("#food-target-empty");
+
+  if (!estimate.target) {
+    if (targetSummary) targetSummary.textContent = "Estimate: --";
+    if (detailSummary) detailSummary.textContent = "Complete your profile to calculate an estimate.";
+    if (emptyState) emptyState.hidden = false;
+  } else {
+    if (targetSummary) targetSummary.textContent = `Estimate: ${formatKcal(estimate.target)} kcal`;
+    if (detailSummary) {
+      const adjustment = estimate.adjustment != null ? `${estimate.adjustment >= 0 ? "+" : ""}${formatKcal(estimate.adjustment)} kcal` : "--";
+      detailSummary.textContent = `BMR ${formatKcal(estimate.bmr)} | TDEE ${formatKcal(estimate.tdee)} | Adjustment ${adjustment}`;
+    }
+    if (emptyState) emptyState.hidden = true;
+  }
+  if (warning) {
+    const warningText = getTargetWarning(estimate.target);
+    warning.textContent = warningText;
+    warning.hidden = !warningText;
+  }
+
+  const manualHint = qs("#food-manual-target-hint");
+  if (manualHint) {
+    manualHint.textContent = mode === "manual" && manualTarget
+      ? `Manual target: ${formatKcal(manualTarget)} kcal`
+      : mode === "manual"
+        ? "Enter a manual target to override the estimate."
+        : "Auto target uses your profile metrics.";
+  }
+}
+
 function renderFoodGoals() {
   const form = qs("#food-goals-form");
   if (!form || !state.nutritionGoals) return;
-  form.dailyKcalGoal.value = state.nutritionGoals.dailyKcalGoal ?? "";
-  form.proteinGoalG.value = state.nutritionGoals.proteinGoalG ?? "";
-  form.carbsGoalG.value = state.nutritionGoals.carbsGoalG ?? "";
-  form.fatGoalG.value = state.nutritionGoals.fatGoalG ?? "";
-  form.fiberGoalG.value = state.nutritionGoals.fiberGoalG ?? "";
+  const mode = state.nutritionGoals.targetKcalMode || "auto";
+  setFoodTargetMode(mode);
+  form.manualKcalTarget.value = state.nutritionGoals.manualKcalTarget ?? "";
+  form.weeklyRateKg.value = state.nutritionGoals.weeklyRateKg ?? "";
+  form.proteinTargetG.value = state.nutritionGoals.proteinTargetG ?? "";
+  form.carbsTargetG.value = state.nutritionGoals.carbsTargetG ?? "";
+  form.fatTargetG.value = state.nutritionGoals.fatTargetG ?? "";
+  form.fiberTargetG.value = state.nutritionGoals.fiberTargetG ?? "";
   form.showPercent.checked = Boolean(state.settings.macroPercentView);
+  updateFoodTargetPreview();
   updateGoalPercentSummary();
 }
 
@@ -2803,6 +3147,9 @@ function setRoute(route) {
     if (video) video.pause();
     delete document.body.dataset.sticky;
   }
+  if (nextRoute === "food") {
+    renderFood();
+  }
   localStorage.setItem("grit-route", nextRoute);
 }
 
@@ -3151,7 +3498,28 @@ function initActions() {
 
   const foodGoalsForm = qs("#food-goals-form");
   if (foodGoalsForm) {
-    foodGoalsForm.addEventListener("input", updateGoalPercentSummary);
+    foodGoalsForm.addEventListener("input", () => {
+      updateFoodTargetPreview();
+      updateGoalPercentSummary();
+    });
+  }
+
+  const foodTargetMode = qs("#food-target-mode");
+  if (foodTargetMode) {
+    foodTargetMode.addEventListener("click", (event) => {
+      const button = event.target.closest("[data-target-mode]");
+      if (!button) return;
+      const mode = button.dataset.targetMode;
+      if (state.nutritionGoals) state.nutritionGoals.targetKcalMode = mode;
+      setFoodTargetMode(mode);
+      updateFoodTargetPreview();
+      updateGoalPercentSummary();
+    });
+  }
+
+  const foodEditProfile = qs("#food-edit-profile");
+  if (foodEditProfile) {
+    foodEditProfile.addEventListener("click", () => openOnboarding(true));
   }
 }
 
@@ -3396,19 +3764,34 @@ function initForms() {
     foodGoalsForm.addEventListener("submit", async (event) => {
       event.preventDefault();
       const form = new FormData(foodGoalsForm);
+      const modeButton = foodGoalsForm.querySelector("[data-target-mode][aria-pressed=\"true\"]");
+      const targetMode = modeButton?.dataset.targetMode || "auto";
       const goals = {
         id: "default",
-        dailyKcalGoal: Number(form.get("dailyKcalGoal")) || 0,
-        proteinGoalG: Number(form.get("proteinGoalG")) || 0,
-        carbsGoalG: Number(form.get("carbsGoalG")) || 0,
-        fatGoalG: Number(form.get("fatGoalG")) || 0,
-        fiberGoalG: Number(form.get("fiberGoalG")) || 0,
+        targetKcalMode: targetMode,
+        manualKcalTarget: Number(form.get("manualKcalTarget")) || null,
+        weeklyRateKg: Number(form.get("weeklyRateKg")) || null,
+        macroTargetMode: "manual",
+        proteinTargetG: Number(form.get("proteinTargetG")) || null,
+        carbsTargetG: Number(form.get("carbsTargetG")) || null,
+        fatTargetG: Number(form.get("fatTargetG")) || null,
+        fiberTargetG: Number(form.get("fiberTargetG")) || null,
+        proteinGoalG: Number(form.get("proteinTargetG")) || 0,
+        carbsGoalG: Number(form.get("carbsTargetG")) || 0,
+        fatGoalG: Number(form.get("fatTargetG")) || 0,
+        fiberGoalG: Number(form.get("fiberTargetG")) || 0,
         updatedAt: new Date().toISOString()
       };
+      const auto = calculateAutoTarget(state.profile, goals);
+      goals.computedKcalTarget = auto.target;
+      goals.bmrEstimate = auto.bmr;
+      goals.tdeeEstimate = auto.tdee;
+      goals.goalAdjustmentKcal = auto.adjustment;
       state.nutritionGoals = goals;
       await put("nutritionGoals", goals);
       state.settings.macroPercentView = form.get("showPercent") === "on";
-      state.settings.calorieGoal = goals.dailyKcalGoal;
+      const resolvedTarget = resolveTargetKcal(goals);
+      state.settings.calorieGoal = resolvedTarget.target;
       state.settings.proteinGoal = goals.proteinGoalG;
       state.settings.carbGoal = goals.carbsGoalG;
       state.settings.fatGoal = goals.fatGoalG;
@@ -3596,6 +3979,21 @@ function initOnboarding() {
 
     state.settings.units = units;
     await put("settings", state.settings);
+
+    if (state.nutritionGoals) {
+      const updatedGoals = {
+        ...state.nutritionGoals,
+        targetKcalMode: state.nutritionGoals.targetKcalMode || "auto"
+      };
+      const auto = calculateAutoTarget(profile, updatedGoals);
+      updatedGoals.computedKcalTarget = auto.target;
+      updatedGoals.bmrEstimate = auto.bmr;
+      updatedGoals.tdeeEstimate = auto.tdee;
+      updatedGoals.goalAdjustmentKcal = auto.adjustment;
+      updatedGoals.updatedAt = new Date().toISOString();
+      state.nutritionGoals = updatedGoals;
+      await put("nutritionGoals", updatedGoals);
+    }
 
     await put("weightEntries", {
       id: uuid(),
