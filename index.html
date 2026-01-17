@@ -51,6 +51,20 @@
             <div class="progress">
               <div class="progress-bar" id="today-steps-bar"></div>
             </div>
+            <button class="ghost" type="button" data-route-jump="steps">View steps</button>
+          </div>
+
+          <div class="card">
+            <div class="card-header">
+              <div>
+                <h2>Food today</h2>
+                <p class="muted" id="today-food-meta">0 kcal | P 0g C 0g F 0g</p>
+              </div>
+              <button class="ghost" type="button" data-route-jump="food">Log</button>
+            </div>
+            <div class="progress">
+              <div class="progress-bar" id="today-food-bar"></div>
+            </div>
           </div>
 
           <div class="card">
@@ -273,6 +287,322 @@
           </div>
         </section>
 
+        <section class="route" data-route="food" hidden>
+          <div class="card tone-warning" id="food-disclaimer" hidden>
+            <h2>Nutrition disclaimer</h2>
+            <p>Values are estimates; labels vary. Not medical advice; consult a clinician for conditions or medications.</p>
+            <button class="ghost" type="button" id="dismiss-food-disclaimer">Dismiss</button>
+          </div>
+
+          <div class="card hero">
+            <div class="card-header">
+              <div>
+                <p class="eyebrow">Food today</p>
+                <h2 id="food-today-kcal">0 kcal</h2>
+                <p class="muted" id="food-today-remaining">Remaining 0 kcal</p>
+              </div>
+              <button class="ghost" type="button" data-route-jump="food-search">Add food</button>
+            </div>
+            <div class="macro-row" id="food-macro-row">
+              <div class="macro-pill" id="food-macro-protein">P 0g</div>
+              <div class="macro-pill" id="food-macro-carbs">C 0g</div>
+              <div class="macro-pill" id="food-macro-fat">F 0g</div>
+              <div class="macro-pill" id="food-macro-fiber">Fi 0g</div>
+            </div>
+            <div class="macro-progress">
+              <div>
+                <p class="muted">Protein</p>
+                <div class="progress"><div class="progress-bar" id="food-protein-bar"></div></div>
+                <p class="muted" id="food-protein-meta">0 / 0 g</p>
+              </div>
+              <div>
+                <p class="muted">Carbs</p>
+                <div class="progress"><div class="progress-bar" id="food-carbs-bar"></div></div>
+                <p class="muted" id="food-carbs-meta">0 / 0 g</p>
+              </div>
+              <div>
+                <p class="muted">Fat</p>
+                <div class="progress"><div class="progress-bar" id="food-fat-bar"></div></div>
+                <p class="muted" id="food-fat-meta">0 / 0 g</p>
+              </div>
+              <div id="food-fiber-wrap">
+                <p class="muted">Fiber</p>
+                <div class="progress"><div class="progress-bar" id="food-fiber-bar"></div></div>
+                <p class="muted" id="food-fiber-meta">0 / 0 g</p>
+              </div>
+            </div>
+          </div>
+
+          <div class="card meal-card" data-meal="breakfast">
+            <div class="card-header">
+              <div>
+                <h2>Breakfast</h2>
+                <p class="muted" id="meal-breakfast-meta">0 kcal</p>
+              </div>
+              <button class="ghost" type="button" data-add-meal="breakfast">Add</button>
+            </div>
+            <div class="list" id="meal-breakfast-list"></div>
+          </div>
+
+          <div class="card meal-card" data-meal="lunch">
+            <div class="card-header">
+              <div>
+                <h2>Lunch</h2>
+                <p class="muted" id="meal-lunch-meta">0 kcal</p>
+              </div>
+              <button class="ghost" type="button" data-add-meal="lunch">Add</button>
+            </div>
+            <div class="list" id="meal-lunch-list"></div>
+          </div>
+
+          <div class="card meal-card" data-meal="dinner">
+            <div class="card-header">
+              <div>
+                <h2>Dinner</h2>
+                <p class="muted" id="meal-dinner-meta">0 kcal</p>
+              </div>
+              <button class="ghost" type="button" data-add-meal="dinner">Add</button>
+            </div>
+            <div class="list" id="meal-dinner-list"></div>
+          </div>
+
+          <div class="card meal-card" data-meal="snack">
+            <div class="card-header">
+              <div>
+                <h2>Snacks</h2>
+                <p class="muted" id="meal-snack-meta">0 kcal</p>
+              </div>
+              <button class="ghost" type="button" data-add-meal="snack">Add</button>
+            </div>
+            <div class="list" id="meal-snack-list"></div>
+          </div>
+
+          <div class="card">
+            <div class="actions">
+              <button class="ghost" type="button" data-route-jump="food-quick">Quick add</button>
+              <button class="ghost" type="button" data-route-jump="food-library">Food library</button>
+              <button class="ghost" type="button" data-route-jump="food-recipes">Recipes</button>
+              <button class="ghost" type="button" data-route-jump="food-goals">Goals</button>
+            </div>
+          </div>
+        </section>
+
+        <section class="route" data-route="food-search" data-route-parent="food" hidden>
+          <div class="card sticky-filters">
+            <div class="filter-row">
+              <label>
+                Search
+                <input type="search" id="food-search-input" placeholder="Search foods" />
+              </label>
+              <label>
+                Meal
+                <select id="food-meal-select">
+                  <option value="breakfast">Breakfast</option>
+                  <option value="lunch">Lunch</option>
+                  <option value="dinner">Dinner</option>
+                  <option value="snack">Snacks</option>
+                </select>
+              </label>
+              <label>
+                Category
+                <select id="food-category-filter">
+                  <option value="all">All</option>
+                  <option value="protein">Protein</option>
+                  <option value="carb">Carb</option>
+                  <option value="fat">Fat</option>
+                  <option value="produce">Produce</option>
+                  <option value="mixed">Mixed</option>
+                </select>
+              </label>
+            </div>
+            <div class="segmented" role="tablist" aria-label="Food filters" id="food-search-tabs">
+              <button type="button" data-food-tab="recents" aria-pressed="true">Recents</button>
+              <button type="button" data-food-tab="favorites">Favorites</button>
+              <button type="button" data-food-tab="all">All</button>
+            </div>
+          </div>
+          <div class="card">
+            <div class="list" id="food-search-results"></div>
+          </div>
+        </section>
+
+        <section class="route" data-route="food-portion" data-route-parent="food" hidden>
+          <div class="card">
+            <div class="card-header">
+              <div>
+                <h2 id="portion-food-name">Food</h2>
+                <p class="muted" id="portion-food-meta">Per serving</p>
+              </div>
+              <span class="pill" id="portion-meal-label">Meal</span>
+            </div>
+            <div class="segmented" role="tablist" aria-label="Portion mode" id="portion-mode">
+              <button type="button" data-portion-mode="grams" aria-pressed="true">Grams</button>
+              <button type="button" data-portion-mode="servings">Servings</button>
+            </div>
+            <form id="portion-form" class="form-grid">
+              <label>
+                Amount
+                <input type="number" name="amount" min="0" step="0.1" required />
+              </label>
+              <div class="macro-preview" id="portion-preview"></div>
+              <button class="primary" type="submit">Save to meal</button>
+            </form>
+          </div>
+        </section>
+
+        <section class="route" data-route="food-quick" data-route-parent="food" hidden>
+          <div class="card">
+            <h2>Quick add</h2>
+            <form id="food-quick-form" class="form-grid">
+              <label>
+                Meal
+                <select name="meal">
+                  <option value="breakfast">Breakfast</option>
+                  <option value="lunch">Lunch</option>
+                  <option value="dinner">Dinner</option>
+                  <option value="snack">Snacks</option>
+                </select>
+              </label>
+              <label>
+                Calories
+                <input type="number" name="kcal" min="0" step="1" required />
+              </label>
+              <label>
+                Protein (g)
+                <input type="number" name="protein" min="0" step="0.1" />
+              </label>
+              <label>
+                Carbs (g)
+                <input type="number" name="carbs" min="0" step="0.1" />
+              </label>
+              <label>
+                Fat (g)
+                <input type="number" name="fat" min="0" step="0.1" />
+              </label>
+              <label>
+                Fiber (g)
+                <input type="number" name="fiber" min="0" step="0.1" />
+              </label>
+              <details class="details">
+                <summary>More options</summary>
+                <label>
+                  Notes
+                  <input type="text" name="notes" placeholder="Optional notes" />
+                </label>
+              </details>
+              <button class="primary" type="submit">Save entry</button>
+            </form>
+          </div>
+        </section>
+
+        <section class="route" data-route="food-library" data-route-parent="food" hidden>
+          <div class="card">
+            <div class="card-header">
+              <div>
+                <h2>Food library</h2>
+                <p class="muted">Starter foods + your custom items.</p>
+              </div>
+              <button class="ghost" id="food-create" type="button">Create food</button>
+            </div>
+            <div class="list" id="food-library-list"></div>
+          </div>
+        </section>
+
+        <section class="route" data-route="food-recipes" data-route-parent="food" hidden>
+          <div class="card">
+            <div class="card-header">
+              <div>
+                <h2>Recipes</h2>
+                <p class="muted">Combine foods into repeatable meals.</p>
+              </div>
+              <button class="ghost" id="recipe-create" type="button">Create recipe</button>
+            </div>
+            <div class="list" id="recipe-list"></div>
+          </div>
+        </section>
+
+        <section class="route" data-route="food-recipe-new" data-route-parent="food" hidden>
+          <div class="card">
+            <h2>Create recipe</h2>
+            <form id="recipe-form" class="form-grid">
+              <label>
+                Recipe name
+                <input type="text" name="name" required />
+              </label>
+              <label>
+                Ingredient
+                <select name="food" id="recipe-food-select"></select>
+              </label>
+              <label>
+                Grams
+                <input type="number" name="grams" min="0" step="1" />
+              </label>
+              <button class="ghost" type="button" id="recipe-add-ingredient">Add ingredient</button>
+              <div class="list" id="recipe-ingredient-list"></div>
+              <label>
+                Yield type
+                <select name="yieldType">
+                  <option value="grams">Total grams</option>
+                  <option value="servings">Servings</option>
+                </select>
+              </label>
+              <label>
+                Yield amount
+                <input type="number" name="yieldAmount" min="0" step="0.1" required />
+              </label>
+              <div class="macro-preview" id="recipe-macro-preview"></div>
+              <button class="primary" type="submit">Save recipe</button>
+            </form>
+          </div>
+        </section>
+
+        <section class="route" data-route="food-recipe" data-route-parent="food" hidden>
+          <div class="card">
+            <div class="card-header">
+              <div>
+                <h2 id="recipe-detail-name">Recipe</h2>
+                <p class="muted" id="recipe-detail-meta">--</p>
+              </div>
+              <button class="ghost" id="recipe-log" type="button">Log</button>
+            </div>
+            <div class="list" id="recipe-detail-ingredients"></div>
+          </div>
+        </section>
+
+        <section class="route" data-route="food-goals" data-route-parent="food" hidden>
+          <div class="card">
+            <h2>Nutrition goals</h2>
+            <form id="food-goals-form" class="form-grid">
+              <label>
+                Daily calories (kcal)
+                <input type="number" name="dailyKcalGoal" min="0" step="10" />
+              </label>
+              <label>
+                Protein goal (g)
+                <input type="number" name="proteinGoalG" min="0" step="1" />
+              </label>
+              <label>
+                Carbs goal (g)
+                <input type="number" name="carbsGoalG" min="0" step="1" />
+              </label>
+              <label>
+                Fat goal (g)
+                <input type="number" name="fatGoalG" min="0" step="1" />
+              </label>
+              <label>
+                Fiber goal (g)
+                <input type="number" name="fiberGoalG" min="0" step="1" />
+              </label>
+              <label class="checkbox">
+                <input type="checkbox" name="showPercent" />
+                Show macro percentages
+              </label>
+              <div class="summary" id="food-goal-percent"></div>
+              <button class="primary" type="submit">Save goals</button>
+            </form>
+          </div>
+        </section>
+
         <section class="route" data-route="fasting" data-route-parent="today" hidden>
           <div class="card hero">
             <div class="card-header">
@@ -371,6 +701,17 @@
             <div class="grid-2" id="analytics-summary"></div>
           </div>
           <div class="card">
+            <div class="card-header">
+              <div>
+                <h2>Steps trend</h2>
+                <p class="muted" id="trends-steps-meta">Last 7 days</p>
+              </div>
+              <button class="ghost" type="button" data-route-jump="steps">View</button>
+            </div>
+            <div class="week-strip" id="trends-steps-strip"></div>
+            <div class="summary" id="trends-steps-summary"></div>
+          </div>
+          <div class="card">
             <h2>Weekly report card</h2>
             <div id="report-card" class="report-card"></div>
             <button class="ghost" id="export-report" type="button">Export report (CSV summary)</button>
@@ -381,6 +722,7 @@
               <button class="ghost" data-export="steps" type="button">Export steps CSV</button>
               <button class="ghost" data-export="fasting" type="button">Export fasting CSV</button>
               <button class="ghost" data-export="weight" type="button">Export weight CSV</button>
+              <button class="ghost" data-export="food" type="button">Export food CSV</button>
               <button class="ghost" data-export="workouts" type="button">Export workouts CSV</button>
             </div>
           </div>
@@ -490,6 +832,7 @@
                 Workout frequency (per week)
                 <input type="number" name="workoutGoal" min="0" step="1" />
               </label>
+              <button class="ghost" type="button" data-route-jump="food-goals">Nutrition goals</button>
               <button class="primary" type="submit">Save goals</button>
             </form>
           </div>
@@ -510,7 +853,7 @@
 
           <div class="card">
             <h2>Safety</h2>
-            <p>This app provides fitness tracking and is not medical advice. Consult a clinician for conditions, pregnancy, eating disorder history, diabetes/medications, or if unsure.</p>
+            <p>This app provides fitness and nutrition tracking. Values are estimates; labels vary. It is not medical advice. Consult a clinician for conditions, pregnancy, eating disorder history, diabetes/medications, or if unsure.</p>
             <button class="ghost" id="review-safety" type="button">Review safety details</button>
           </div>
 
@@ -528,7 +871,7 @@
       <nav class="bottom-nav" role="tablist" aria-label="Primary">
         <button data-route="today" aria-pressed="true">Today</button>
         <button data-route="train">Train</button>
-        <button data-route="steps">Steps</button>
+        <button data-route="food">Food</button>
         <button data-route="trends">Trends</button>
         <button data-route="settings">Settings</button>
       </nav>
@@ -539,6 +882,7 @@
         <span class="fab-label" id="fab-label">Start fast</span>
       </button>
       <div class="fab-menu" id="fab-menu" hidden>
+        <button class="fab-action" type="button" data-fab-action="quick-add-food">Quick add food</button>
         <button class="fab-action" type="button" data-fab-action="log-weight">Log weight</button>
         <button class="fab-action" type="button" data-fab-action="log-steps">Log steps</button>
         <button class="fab-action" type="button" data-fab-action="start-workout">Start workout</button>
@@ -546,6 +890,8 @@
       <button class="fab-toggle" id="fab-toggle" type="button" aria-label="Quick actions">+</button>
     </div>
     <div class="fab-backdrop" id="fab-backdrop" hidden></div>
+    <div class="toast" id="seed-toast" hidden></div>
+    <div class="toast" id="app-toast" hidden></div>
 
     <div class="overlay" id="onboarding" hidden>
       <div class="modal">

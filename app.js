@@ -4,6 +4,7 @@
   getAllByIndex,
   put,
   bulkPut,
+  remove,
   clearAll,
   uuid
 } from "/db.js";
@@ -15,13 +16,36 @@ const state = {
   fastingSessions: [],
   fastingModes: [],
   weightEntries: [],
+  nutritionEntries: [],
+  foodItems: [],
+  recipes: [],
+  foodLogs: [],
+  nutritionGoals: null,
   exercises: [],
   templates: [],
   workouts: [],
   workoutSets: [],
   progressions: [],
   progressionLevels: [],
-  progressionStatus: []
+  progressionStatus: [],
+  foodSearch: {
+    tab: "recents",
+    query: "",
+    category: "all",
+    meal: "breakfast"
+  },
+  foodPortion: {
+    sourceType: "food",
+    sourceId: null,
+    meal: "breakfast",
+    mode: "grams",
+    entryId: null
+  },
+  quickEditEntryId: null,
+  recipeDraft: {
+    ingredients: []
+  },
+  activeRecipeId: null
 };
 
 const ACTIVITY_FACTORS = {
@@ -39,6 +63,14 @@ const DEFAULT_SETTINGS = {
   stepsGoal: 8000,
   fastTarget: 16,
   workoutGoal: 3,
+  calorieGoal: 2000,
+  proteinGoal: 150,
+  carbGoal: 220,
+  fatGoal: 70,
+  foodDisclaimerDismissed: false,
+  macroPercentView: false,
+  dayStartHour: 0,
+  foodMigrationDone: false,
   theme: "system",
   density: "comfortable",
   accent: "amber",
@@ -60,6 +92,244 @@ const DEFAULT_SETTINGS = {
   lastHydrationAt: null,
   lastFastEndAt: null
 };
+
+const MEAL_TYPES = ["breakfast", "lunch", "dinner", "snack"];
+const MEAL_LABELS = {
+  breakfast: "Breakfast",
+  lunch: "Lunch",
+  dinner: "Dinner",
+  snack: "Snacks",
+  custom: "Custom"
+};
+
+const DEFAULT_NUTRITION_GOALS = {
+  id: "default",
+  dailyKcalGoal: 2000,
+  proteinGoalG: 150,
+  carbsGoalG: 220,
+  fatGoalG: 70,
+  fiberGoalG: 25,
+  updatedAt: null
+};
+
+const FOOD_SEED = [
+  {
+    id: "food-chicken-breast",
+    name: "Chicken breast, cooked",
+    brand: "Generic",
+    category: "protein",
+    nutritionBasis: "per100g",
+    per100g: { kcal: 165, protein: 31, carbs: 0, fat: 3.6, fiber: 0 }
+  },
+  {
+    id: "food-salmon",
+    name: "Salmon, cooked",
+    brand: "Generic",
+    category: "protein",
+    nutritionBasis: "per100g",
+    per100g: { kcal: 208, protein: 20, carbs: 0, fat: 13, fiber: 0 }
+  },
+  {
+    id: "food-turkey-ground",
+    name: "Turkey, ground 93% lean",
+    brand: "Generic",
+    category: "protein",
+    nutritionBasis: "per100g",
+    per100g: { kcal: 176, protein: 23, carbs: 0, fat: 9, fiber: 0 }
+  },
+  {
+    id: "food-eggs",
+    name: "Eggs, whole",
+    brand: "Generic",
+    category: "protein",
+    nutritionBasis: "per100g",
+    per100g: { kcal: 143, protein: 12.6, carbs: 0.7, fat: 9.5, fiber: 0 }
+  },
+  {
+    id: "food-egg-whites",
+    name: "Egg whites",
+    brand: "Generic",
+    category: "protein",
+    nutritionBasis: "per100g",
+    per100g: { kcal: 52, protein: 10.9, carbs: 0.7, fat: 0.2, fiber: 0 }
+  },
+  {
+    id: "food-greek-yogurt",
+    name: "Greek yogurt, nonfat",
+    brand: "Generic",
+    category: "protein",
+    nutritionBasis: "per100g",
+    per100g: { kcal: 59, protein: 10, carbs: 3.6, fat: 0.4, fiber: 0 }
+  },
+  {
+    id: "food-cottage-cheese",
+    name: "Cottage cheese, lowfat",
+    brand: "Generic",
+    category: "protein",
+    nutritionBasis: "per100g",
+    per100g: { kcal: 98, protein: 11, carbs: 3.4, fat: 4.3, fiber: 0 }
+  },
+  {
+    id: "food-tofu-firm",
+    name: "Tofu, firm",
+    brand: "Generic",
+    category: "protein",
+    nutritionBasis: "per100g",
+    per100g: { kcal: 144, protein: 17, carbs: 3.9, fat: 8.7, fiber: 2.3 }
+  },
+  {
+    id: "food-lentils",
+    name: "Lentils, cooked",
+    brand: "Generic",
+    category: "carb",
+    nutritionBasis: "per100g",
+    per100g: { kcal: 116, protein: 9, carbs: 20, fat: 0.4, fiber: 7.9 }
+  },
+  {
+    id: "food-black-beans",
+    name: "Black beans, cooked",
+    brand: "Generic",
+    category: "carb",
+    nutritionBasis: "per100g",
+    per100g: { kcal: 132, protein: 8.9, carbs: 23.7, fat: 0.5, fiber: 8.7 }
+  },
+  {
+    id: "food-white-rice",
+    name: "White rice, cooked",
+    brand: "Generic",
+    category: "carb",
+    nutritionBasis: "per100g",
+    per100g: { kcal: 130, protein: 2.7, carbs: 28.2, fat: 0.3, fiber: 0.4 }
+  },
+  {
+    id: "food-brown-rice",
+    name: "Brown rice, cooked",
+    brand: "Generic",
+    category: "carb",
+    nutritionBasis: "per100g",
+    per100g: { kcal: 123, protein: 2.7, carbs: 25.6, fat: 1, fiber: 1.8 }
+  },
+  {
+    id: "food-oats",
+    name: "Oats, dry",
+    brand: "Generic",
+    category: "carb",
+    nutritionBasis: "per100g",
+    per100g: { kcal: 389, protein: 17, carbs: 66, fat: 6.9, fiber: 10.6 }
+  },
+  {
+    id: "food-whole-wheat-bread",
+    name: "Whole wheat bread",
+    brand: "Generic",
+    category: "carb",
+    nutritionBasis: "per100g",
+    per100g: { kcal: 247, protein: 13, carbs: 41, fat: 4.2, fiber: 6 }
+  },
+  {
+    id: "food-potato",
+    name: "Potato, baked",
+    brand: "Generic",
+    category: "carb",
+    nutritionBasis: "per100g",
+    per100g: { kcal: 93, protein: 2.5, carbs: 21, fat: 0.1, fiber: 2.2 }
+  },
+  {
+    id: "food-sweet-potato",
+    name: "Sweet potato, baked",
+    brand: "Generic",
+    category: "carb",
+    nutritionBasis: "per100g",
+    per100g: { kcal: 90, protein: 2, carbs: 21, fat: 0.2, fiber: 3.3 }
+  },
+  {
+    id: "food-banana",
+    name: "Banana",
+    brand: "Generic",
+    category: "produce",
+    nutritionBasis: "per100g",
+    per100g: { kcal: 89, protein: 1.1, carbs: 23, fat: 0.3, fiber: 2.6 }
+  },
+  {
+    id: "food-apple",
+    name: "Apple",
+    brand: "Generic",
+    category: "produce",
+    nutritionBasis: "per100g",
+    per100g: { kcal: 52, protein: 0.3, carbs: 14, fat: 0.2, fiber: 2.4 }
+  },
+  {
+    id: "food-blueberries",
+    name: "Blueberries",
+    brand: "Generic",
+    category: "produce",
+    nutritionBasis: "per100g",
+    per100g: { kcal: 57, protein: 0.7, carbs: 14, fat: 0.3, fiber: 2.4 }
+  },
+  {
+    id: "food-broccoli",
+    name: "Broccoli",
+    brand: "Generic",
+    category: "produce",
+    nutritionBasis: "per100g",
+    per100g: { kcal: 35, protein: 2.4, carbs: 7.2, fat: 0.4, fiber: 3.3 }
+  },
+  {
+    id: "food-spinach",
+    name: "Spinach",
+    brand: "Generic",
+    category: "produce",
+    nutritionBasis: "per100g",
+    per100g: { kcal: 23, protein: 2.9, carbs: 3.6, fat: 0.4, fiber: 2.2 }
+  },
+  {
+    id: "food-olive-oil",
+    name: "Olive oil",
+    brand: "Generic",
+    category: "fat",
+    nutritionBasis: "per100g",
+    per100g: { kcal: 884, protein: 0, carbs: 0, fat: 100, fiber: 0 }
+  },
+  {
+    id: "food-peanut-butter",
+    name: "Peanut butter",
+    brand: "Generic",
+    category: "fat",
+    nutritionBasis: "per100g",
+    per100g: { kcal: 588, protein: 25, carbs: 20, fat: 50, fiber: 6 }
+  },
+  {
+    id: "food-almonds",
+    name: "Almonds",
+    brand: "Generic",
+    category: "fat",
+    nutritionBasis: "per100g",
+    per100g: { kcal: 579, protein: 21, carbs: 22, fat: 50, fiber: 12.5 }
+  },
+  {
+    id: "food-avocado",
+    name: "Avocado",
+    brand: "Generic",
+    category: "fat",
+    nutritionBasis: "per100g",
+    per100g: { kcal: 160, protein: 2, carbs: 8.5, fat: 14.7, fiber: 6.7 }
+  },
+  {
+    id: "food-cheddar",
+    name: "Cheddar cheese",
+    brand: "Generic",
+    category: "fat",
+    nutritionBasis: "per100g",
+    per100g: { kcal: 403, protein: 25, carbs: 1.3, fat: 33, fiber: 0 }
+  },
+  {
+    id: "food-milk-2p",
+    name: "Milk 2%",
+    brand: "Generic",
+    category: "mixed",
+    nutritionBasis: "per100g",
+    per100g: { kcal: 50, protein: 3.4, carbs: 5, fat: 2, fiber: 0 }
+  }
+];
 
 const MEDIA_BASE_PRIMARY = "/public/exercises";
 const MEDIA_BASE_FALLBACK = "/exercises";
@@ -285,13 +555,41 @@ let templateFilter = "recent";
 let prefersReduced = null;
 let activeExerciseId = null;
 let captionTimer = null;
+let toastTimer = null;
+const foodSwipeStart = new Map();
 
-const routes = ["today", "train", "exercise", "steps", "fasting", "weight", "trends", "settings"];
+const routes = [
+  "today",
+  "train",
+  "exercise",
+  "steps",
+  "food",
+  "food-search",
+  "food-portion",
+  "food-quick",
+  "food-library",
+  "food-recipes",
+  "food-recipe-new",
+  "food-recipe",
+  "food-goals",
+  "fasting",
+  "weight",
+  "trends",
+  "settings"
+];
 
 const routeParents = {
   fasting: "today",
   weight: "today",
-  exercise: "train"
+  exercise: "train",
+  "food-search": "food",
+  "food-portion": "food",
+  "food-quick": "food",
+  "food-library": "food",
+  "food-recipes": "food",
+  "food-recipe-new": "food",
+  "food-recipe": "food",
+  "food-goals": "food"
 };
 
 const routeTitles = {
@@ -299,6 +597,15 @@ const routeTitles = {
   train: "Train",
   exercise: "Exercise",
   steps: "Steps",
+  food: "Food",
+  "food-search": "Add food",
+  "food-portion": "Portion",
+  "food-quick": "Quick add",
+  "food-library": "Food library",
+  "food-recipes": "Recipes",
+  "food-recipe-new": "New recipe",
+  "food-recipe": "Recipe",
+  "food-goals": "Nutrition goals",
   fasting: "Fasting",
   weight: "Weight",
   trends: "Trends",
@@ -409,6 +716,87 @@ function formatDuration(ms) {
   return `${hours}h ${minutes}m`;
 }
 
+function macroProgress(value, goal) {
+  if (!goal) return 0;
+  return Math.min(100, Math.round((value / goal) * 100));
+}
+
+function roundMacro(value) {
+  return Math.round((Number(value) || 0) * 10) / 10;
+}
+
+function formatMacro(value) {
+  return roundMacro(value).toFixed(1);
+}
+
+function formatKcal(value) {
+  return Math.round(Number(value) || 0).toLocaleString();
+}
+
+function emptyMacros() {
+  return { kcal: 0, protein: 0, carbs: 0, fat: 0, fiber: 0 };
+}
+
+function addMacros(target, macros) {
+  target.kcal += Number(macros.kcal) || 0;
+  target.protein += Number(macros.protein) || 0;
+  target.carbs += Number(macros.carbs) || 0;
+  target.fat += Number(macros.fat) || 0;
+  target.fiber += Number(macros.fiber) || 0;
+  return target;
+}
+
+function scaleMacros(macros, factor) {
+  return {
+    kcal: (Number(macros.kcal) || 0) * factor,
+    protein: (Number(macros.protein) || 0) * factor,
+    carbs: (Number(macros.carbs) || 0) * factor,
+    fat: (Number(macros.fat) || 0) * factor,
+    fiber: (Number(macros.fiber) || 0) * factor
+  };
+}
+
+function getMacroGoals() {
+  const goals = state.nutritionGoals || DEFAULT_NUTRITION_GOALS;
+  return {
+    calories: Number(goals.dailyKcalGoal) || 0,
+    protein: Number(goals.proteinGoalG) || 0,
+    carbs: Number(goals.carbsGoalG) || 0,
+    fat: Number(goals.fatGoalG) || 0,
+    fiber: Number(goals.fiberGoalG) || 0
+  };
+}
+
+function foodDateKey(value) {
+  const offset = Number(state.settings?.dayStartHour) || 0;
+  const adjusted = new Date(value);
+  if (offset) {
+    adjusted.setHours(adjusted.getHours() - offset);
+  }
+  return dateKey(adjusted);
+}
+
+function getFoodTotals(dayKey = foodDateKey(new Date())) {
+  return state.foodLogs
+    .filter((entry) => entry.dateLocal === dayKey)
+    .reduce((totals, entry) => addMacros(totals, entry.computedMacros || {}), emptyMacros());
+}
+
+function getFoodTotalsByMeal(dayKey = foodDateKey(new Date())) {
+  const totals = {};
+  MEAL_TYPES.forEach((meal) => {
+    totals[meal] = emptyMacros();
+  });
+  state.foodLogs
+    .filter((entry) => entry.dateLocal === dayKey)
+    .forEach((entry) => {
+      const meal = entry.mealType || "snack";
+      if (!totals[meal]) totals[meal] = emptyMacros();
+      addMacros(totals[meal], entry.computedMacros || {});
+    });
+  return totals;
+}
+
 function slugify(value) {
   return String(value || "")
     .toLowerCase()
@@ -426,6 +814,59 @@ function normalizeEquipment(input) {
     .split(/[,/]/g)
     .map((item) => item.trim())
     .filter(Boolean);
+}
+
+function normalizeMealType(value) {
+  const normalized = String(value || "").toLowerCase();
+  if (MEAL_TYPES.includes(normalized)) return normalized;
+  if (normalized === "meal" || normalized === "other" || normalized === "custom") return "snack";
+  return "snack";
+}
+
+function getFoodItemById(id) {
+  return state.foodItems.find((item) => item.id === id);
+}
+
+function getRecipeById(id) {
+  return state.recipes.find((item) => item.id === id);
+}
+
+function computeFoodMacros(food, { grams, servings } = {}) {
+  if (!food) return emptyMacros();
+  if (food.nutritionBasis === "per100g") {
+    const amount = Number(grams) || 0;
+    if (!amount) return emptyMacros();
+    return scaleMacros(food.per100g || {}, amount / 100);
+  }
+  if (food.nutritionBasis === "perServing") {
+    const servingMacros = food.perServing || {};
+    const servingGrams = Number(servingMacros.servingGrams) || 0;
+    if (servings != null && servings !== "") {
+      return scaleMacros(servingMacros, Number(servings) || 0);
+    }
+    if (grams != null && grams !== "" && servingGrams) {
+      return scaleMacros(servingMacros, (Number(grams) || 0) / servingGrams);
+    }
+  }
+  return emptyMacros();
+}
+
+function computeRecipeTotals(recipe) {
+  const total = emptyMacros();
+  if (!recipe || !Array.isArray(recipe.ingredients)) return total;
+  recipe.ingredients.forEach((ingredient) => {
+    const food = getFoodItemById(ingredient.foodId);
+    if (!food) return;
+    addMacros(total, computeFoodMacros(food, { grams: ingredient.grams }));
+  });
+  return total;
+}
+
+function computeRecipePerServing(recipe, totalMacros) {
+  const total = totalMacros || computeRecipeTotals(recipe);
+  const yieldAmount = Number(recipe?.yieldAmount) || 0;
+  if (!yieldAmount) return emptyMacros();
+  return scaleMacros(total, 1 / yieldAmount);
 }
 
 function getMediaBaseFromPath(path) {
@@ -641,6 +1082,11 @@ async function loadState() {
   state.fastingSessions = await getAll("fastingSessions");
   state.fastingModes = await getAll("fastingModes");
   state.weightEntries = await getAll("weightEntries");
+  state.nutritionEntries = await getAll("nutritionEntries");
+  state.foodItems = await getAll("foodItems");
+  state.recipes = await getAll("recipes");
+  state.foodLogs = await getAll("foodLogs");
+  state.nutritionGoals = await get("nutritionGoals", "default");
   state.exercises = await getAll("exercises");
   state.templates = await getAll("workoutTemplates");
   state.workouts = await getAll("workouts");
@@ -648,12 +1094,100 @@ async function loadState() {
   state.progressions = await getAll("progressions");
   state.progressionLevels = await getAll("progressionLevels");
   state.progressionStatus = await getAll("progressionStatus");
+
+  if (!state.nutritionGoals) {
+    const fallback = {
+      ...DEFAULT_NUTRITION_GOALS,
+      dailyKcalGoal: Number(state.settings.calorieGoal) || DEFAULT_NUTRITION_GOALS.dailyKcalGoal,
+      proteinGoalG: Number(state.settings.proteinGoal) || DEFAULT_NUTRITION_GOALS.proteinGoalG,
+      carbsGoalG: Number(state.settings.carbGoal) || DEFAULT_NUTRITION_GOALS.carbsGoalG,
+      fatGoalG: Number(state.settings.fatGoal) || DEFAULT_NUTRITION_GOALS.fatGoalG,
+      updatedAt: new Date().toISOString()
+    };
+    state.nutritionGoals = fallback;
+    await put("nutritionGoals", fallback);
+  } else {
+    const normalized = {
+      ...DEFAULT_NUTRITION_GOALS,
+      ...state.nutritionGoals,
+      updatedAt: state.nutritionGoals.updatedAt || new Date().toISOString()
+    };
+    state.nutritionGoals = normalized;
+    await put("nutritionGoals", normalized);
+  }
+
+  if (!state.settings.foodMigrationDone && state.foodLogs.length === 0 && state.nutritionEntries.length) {
+    const migrated = state.nutritionEntries.map((entry) => ({
+      id: entry.id || uuid(),
+      dateLocal: entry.date || foodDateKey(entry.at || new Date()),
+      datetime: entry.at || new Date().toISOString(),
+      mealType: normalizeMealType(entry.meal),
+      sourceType: "quick",
+      sourceId: null,
+      amountGrams: null,
+      amountServings: null,
+      computedMacros: {
+        kcal: Number(entry.calories) || 0,
+        protein: Number(entry.protein) || 0,
+        carbs: Number(entry.carbs) || 0,
+        fat: Number(entry.fat) || 0,
+        fiber: Number(entry.fiber) || 0
+      },
+      notes: entry.notes || ""
+    }));
+    await bulkPut("foodLogs", migrated);
+    state.foodLogs = await getAll("foodLogs");
+    state.settings.foodMigrationDone = true;
+    await put("settings", state.settings);
+  }
+}
+
+async function seedFoodDatabase() {
+  const existing = await getAll("foodItems");
+  if (existing.length) return;
+  const toast = qs("#seed-toast");
+  const now = new Date().toISOString();
+  const items = FOOD_SEED.map((item) => ({
+    ...item,
+    isUserCreated: false,
+    isFavorite: false,
+    lastUsedAt: null,
+    createdAt: now,
+    updatedAt: now
+  }));
+  const chunkSize = 6;
+  for (let i = 0; i < items.length; i += chunkSize) {
+    await bulkPut("foodItems", items.slice(i, i + chunkSize));
+    if (toast) {
+      toast.textContent = `Seeding food database ${Math.min(i + chunkSize, items.length)}/${items.length}`;
+      toast.hidden = false;
+    }
+    await new Promise((resolve) => setTimeout(resolve, 30));
+  }
+  state.foodItems = await getAll("foodItems");
+  if (toast) {
+    toast.textContent = "Food database ready";
+    setTimeout(() => {
+      toast.hidden = true;
+    }, 1200);
+  }
+  renderFoodSearch();
+  renderFoodLibrary();
 }
 
 function render() {
   applyAppearanceSettings();
   renderDashboard();
   renderSteps();
+  renderFood();
+  renderFoodSearch();
+  renderFoodPortion();
+  renderFoodLibrary();
+  renderRecipes();
+  renderRecipeDraft();
+  renderRecipeDetail();
+  renderFoodGoals();
+  renderFoodQuick();
   renderFasting();
   renderWeight();
   renderCalisthenics();
@@ -703,6 +1237,20 @@ function renderDashboard() {
     : "--";
   qs("#today-weight-meta").textContent = latestWeight ? weightTrendSummary() : "Trend --";
 
+  const foodKey = foodDateKey(new Date());
+  const foodTotals = getFoodTotals(foodKey);
+  const goals = getMacroGoals();
+  const foodMeta = qs("#today-food-meta");
+  if (foodMeta) {
+    foodMeta.textContent = `${formatKcal(foodTotals.kcal)} kcal | P ${formatMacro(foodTotals.protein)}g C ${formatMacro(
+      foodTotals.carbs
+    )}g F ${formatMacro(foodTotals.fat)}g`;
+  }
+  const calorieBar = qs("#today-food-bar");
+  if (calorieBar) {
+    calorieBar.style.width = `${macroProgress(foodTotals.kcal, goals.calories)}%`;
+  }
+
   qs("#today-focus").textContent = getGoalFocus();
 
   renderTodayNudges(stepsToday, stepsGoal);
@@ -721,6 +1269,16 @@ function renderTodayNudges(stepsToday, stepsGoal) {
       title: "No weight logged in 3 days",
       body: "Quickly log a new weigh-in to keep trends accurate.",
       cta: "Log weight"
+    });
+  }
+  const foodKey = foodDateKey(new Date());
+  const hasFood = state.foodLogs.some((entry) => entry.dateLocal === foodKey);
+  if (!hasFood && new Date().getHours() >= 12) {
+    nudges.push({
+      id: "log-food",
+      title: "No food logged today",
+      body: "Log a meal to track calories and macros.",
+      cta: "Log food"
     });
   }
   if (new Date().getHours() >= 14 && stepsGoal > 0 && stepsToday < stepsGoal * 0.5) {
@@ -794,6 +1352,18 @@ function renderTodayHistory() {
     });
   }
 
+  const lastFood = state.foodLogs
+    .slice()
+    .sort((a, b) => new Date(b.datetime) - new Date(a.datetime))[0];
+  if (lastFood) {
+    const detail = formatFoodLogSummary(lastFood);
+    items.push({
+      at: lastFood.datetime,
+      label: "Food",
+      detail
+    });
+  }
+
   const lastWorkout = state.workouts
     .filter((workout) => workout.endedAt)
     .sort((a, b) => new Date(b.endedAt) - new Date(a.endedAt))[0];
@@ -861,6 +1431,413 @@ function renderSteps() {
     })
     .join("");
   qs("#steps-history").innerHTML = historyList || "<div class=\"list-item\">No steps logged yet.</div>";
+}
+
+function getFoodLogSourceName(entry) {
+  if (!entry) return "Food";
+  if (entry.sourceType === "food") {
+    return getFoodItemById(entry.sourceId)?.name || "Food item";
+  }
+  if (entry.sourceType === "recipe") {
+    return getRecipeById(entry.sourceId)?.name || "Recipe";
+  }
+  if (entry.sourceType === "quick") return "Quick add";
+  return "Food";
+}
+
+function formatFoodPortion(entry) {
+  if (!entry) return "";
+  if (entry.sourceType === "quick") return "Quick add";
+  if (entry.amountGrams) return `${formatMacro(entry.amountGrams)} g`;
+  if (entry.amountServings) {
+    const servings = formatMacro(entry.amountServings);
+    return `${servings} serving${Number(entry.amountServings) === 1 ? "" : "s"}`;
+  }
+  return "Portion";
+}
+
+function formatFoodMacroLine(macros) {
+  if (!macros) return "P 0.0g C 0.0g F 0.0g";
+  const line = `P ${formatMacro(macros.protein)}g C ${formatMacro(macros.carbs)}g F ${formatMacro(macros.fat)}g`;
+  if (Number(macros.fiber) > 0) {
+    return `${line} Fi ${formatMacro(macros.fiber)}g`;
+  }
+  return line;
+}
+
+function formatFoodLogSummary(entry) {
+  const name = getFoodLogSourceName(entry);
+  const macros = entry?.computedMacros || emptyMacros();
+  return `${name} | ${formatKcal(macros.kcal)} kcal | ${formatFoodMacroLine(macros)}`;
+}
+
+function getFoodBasisLabel(food) {
+  if (!food) return "";
+  if (food.nutritionBasis === "perServing") {
+    const grams = food.perServing?.servingGrams;
+    return grams ? `per serving (${grams} g)` : "per serving";
+  }
+  return "per 100g";
+}
+
+function getFoodBaseMacros(food) {
+  if (!food) return emptyMacros();
+  if (food.nutritionBasis === "perServing") return food.perServing || emptyMacros();
+  return food.per100g || emptyMacros();
+}
+
+function renderFood() {
+  const kcalEl = qs("#food-today-kcal");
+  if (!kcalEl) return;
+  const dayKey = foodDateKey(new Date());
+  const totals = getFoodTotals(dayKey);
+  const goals = getMacroGoals();
+
+  kcalEl.textContent = `${formatKcal(totals.kcal)} kcal`;
+  const remainingEl = qs("#food-today-remaining");
+  if (remainingEl) {
+    if (!goals.calories) {
+      remainingEl.textContent = "Set a calorie goal";
+    } else {
+      const remaining = goals.calories - totals.kcal;
+      if (remaining >= 0) {
+        remainingEl.textContent = `Remaining ${formatKcal(remaining)} kcal`;
+      } else {
+        remainingEl.textContent = `Over by ${formatKcal(Math.abs(remaining))} kcal`;
+      }
+    }
+  }
+
+  const disclaimer = qs("#food-disclaimer");
+  if (disclaimer) {
+    disclaimer.hidden = Boolean(state.settings.foodDisclaimerDismissed);
+  }
+
+  const proteinEl = qs("#food-macro-protein");
+  const carbsEl = qs("#food-macro-carbs");
+  const fatEl = qs("#food-macro-fat");
+  const fiberEl = qs("#food-macro-fiber");
+  if (proteinEl) proteinEl.textContent = `P ${formatMacro(totals.protein)}g`;
+  if (carbsEl) carbsEl.textContent = `C ${formatMacro(totals.carbs)}g`;
+  if (fatEl) fatEl.textContent = `F ${formatMacro(totals.fat)}g`;
+  if (fiberEl) fiberEl.textContent = `Fi ${formatMacro(totals.fiber)}g`;
+
+  qs("#food-protein-bar").style.width = `${macroProgress(totals.protein, goals.protein)}%`;
+  qs("#food-carbs-bar").style.width = `${macroProgress(totals.carbs, goals.carbs)}%`;
+  qs("#food-fat-bar").style.width = `${macroProgress(totals.fat, goals.fat)}%`;
+  qs("#food-protein-meta").textContent = `${formatMacro(totals.protein)} / ${formatMacro(goals.protein)} g`;
+  qs("#food-carbs-meta").textContent = `${formatMacro(totals.carbs)} / ${formatMacro(goals.carbs)} g`;
+  qs("#food-fat-meta").textContent = `${formatMacro(totals.fat)} / ${formatMacro(goals.fat)} g`;
+
+  const showFiber = Number(goals.fiber) > 0 || Number(totals.fiber) > 0;
+  const fiberWrap = qs("#food-fiber-wrap");
+  if (fiberWrap) fiberWrap.hidden = !showFiber;
+  if (fiberEl) fiberEl.hidden = !showFiber;
+  if (showFiber) {
+    qs("#food-fiber-bar").style.width = `${macroProgress(totals.fiber, goals.fiber)}%`;
+    qs("#food-fiber-meta").textContent = `${formatMacro(totals.fiber)} / ${formatMacro(goals.fiber)} g`;
+  }
+
+  const entries = state.foodLogs
+    .filter((entry) => entry.dateLocal === dayKey)
+    .slice()
+    .sort((a, b) => new Date(a.datetime) - new Date(b.datetime));
+
+  const meals = MEAL_TYPES.reduce((acc, meal) => {
+    acc[meal] = [];
+    return acc;
+  }, {});
+  entries.forEach((entry) => {
+    const meal = normalizeMealType(entry.mealType);
+    meals[meal].push(entry);
+  });
+
+  const mealTotals = getFoodTotalsByMeal(dayKey);
+  MEAL_TYPES.forEach((meal) => {
+    const list = qs(`#meal-${meal}-list`);
+    const meta = qs(`#meal-${meal}-meta`);
+    if (meta) meta.textContent = `${formatKcal(mealTotals[meal]?.kcal || 0)} kcal`;
+    if (!list) return;
+    if (!meals[meal].length) {
+      list.innerHTML = "<div class=\"list-item\">No entries yet.</div>";
+      return;
+    }
+    list.innerHTML = meals[meal]
+      .map((entry) => {
+        const name = getFoodLogSourceName(entry);
+        const portion = formatFoodPortion(entry);
+        const macros = entry.computedMacros || emptyMacros();
+        return `
+          <div class=\"list-item food-entry\" data-food-entry-id=\"${entry.id}\">
+            <div>
+              <strong>${name}</strong>
+              <div class=\"muted\">${portion}</div>
+            </div>
+            <div class=\"food-entry-meta\">
+              <strong>${formatKcal(macros.kcal)} kcal</strong>
+              <div class=\"muted\">${formatFoodMacroLine(macros)}</div>
+            </div>
+            <button class=\"ghost food-entry-delete\" type=\"button\" data-food-delete=\"${entry.id}\">Delete</button>
+          </div>
+        `;
+      })
+      .join("");
+  });
+}
+
+function renderFoodSearch() {
+  const list = qs("#food-search-results");
+  if (!list) return;
+  const input = qs("#food-search-input");
+  const mealSelect = qs("#food-meal-select");
+  const categorySelect = qs("#food-category-filter");
+  if (input && input.value !== state.foodSearch.query) input.value = state.foodSearch.query;
+  if (mealSelect) mealSelect.value = state.foodSearch.meal;
+  if (categorySelect) categorySelect.value = state.foodSearch.category;
+
+  qsa("#food-search-tabs button").forEach((button) => {
+    button.setAttribute("aria-pressed", button.dataset.foodTab === state.foodSearch.tab);
+  });
+
+  const query = state.foodSearch.query.trim().toLowerCase();
+  const category = state.foodSearch.category;
+  const tab = state.foodSearch.tab;
+
+  let items = state.foodItems.slice();
+  if (category !== "all") {
+    items = items.filter((item) => item.category === category);
+  }
+  if (query) {
+    items = items.filter((item) => {
+      const haystack = `${item.name} ${item.brand || ""}`.toLowerCase();
+      return haystack.includes(query);
+    });
+  }
+
+  if (tab === "favorites") {
+    items = items.filter((item) => item.isFavorite);
+    items.sort((a, b) => a.name.localeCompare(b.name));
+  } else if (tab === "recents") {
+    items = items
+      .filter((item) => item.lastUsedAt)
+      .sort((a, b) => new Date(b.lastUsedAt) - new Date(a.lastUsedAt));
+  } else {
+    items.sort((a, b) => a.name.localeCompare(b.name));
+  }
+
+  if (!items.length) {
+    const message = tab === "recents"
+      ? "No recent foods yet. Log a meal to build recents."
+      : "No foods found. Try another search or category.";
+    list.innerHTML = `<div class="list-item">${message}</div>`;
+    return;
+  }
+
+  list.innerHTML = items
+    .map((food) => {
+      const macros = getFoodBaseMacros(food);
+      const basisLabel = getFoodBasisLabel(food);
+      return `
+        <div class=\"list-item food-result\" data-food-id=\"${food.id}\">
+          <div>
+            <strong>${food.name}</strong>
+            <div class=\"muted\">${food.brand || "Generic"} | ${formatTag(food.category)} | ${basisLabel}</div>
+            <div class=\"muted\">${formatKcal(macros.kcal)} kcal | ${formatFoodMacroLine(macros)}</div>
+          </div>
+          <div class=\"food-entry-meta\">
+            <button class=\"ghost\" type=\"button\" data-food-favorite=\"${food.id}\">${food.isFavorite ? "Unfavorite" : "Favorite"}</button>
+          </div>
+        </div>
+      `;
+    })
+    .join("");
+}
+
+function renderFoodPortion() {
+  const nameEl = qs("#portion-food-name");
+  if (!nameEl) return;
+  const mealLabel = qs("#portion-meal-label");
+  const metaEl = qs("#portion-food-meta");
+  const modeButtons = qsa("#portion-mode button");
+  const portionForm = qs("#portion-form");
+  const selection = state.foodPortion;
+  let supportsGrams = true;
+  let supportsServings = true;
+  let basisLabel = "";
+
+  if (selection.sourceType === "recipe") {
+    const recipe = getRecipeById(selection.sourceId);
+    nameEl.textContent = recipe?.name || "Recipe";
+    const yieldType = recipe?.yieldType || "servings";
+    supportsGrams = yieldType === "grams";
+    supportsServings = yieldType === "servings";
+    basisLabel = yieldType === "grams" ? "per gram" : "per serving";
+  } else {
+    const food = getFoodItemById(selection.sourceId);
+    nameEl.textContent = food?.name || "Food";
+    if (!food || food.nutritionBasis === "per100g") {
+      supportsServings = false;
+      basisLabel = "per 100g";
+    } else {
+      const servingGrams = Number(food.perServing?.servingGrams) || 0;
+      supportsGrams = Boolean(servingGrams);
+      basisLabel = getFoodBasisLabel(food);
+    }
+  }
+
+  if (!supportsGrams && selection.mode === "grams") selection.mode = "servings";
+  if (!supportsServings && selection.mode === "servings") selection.mode = "grams";
+
+  modeButtons.forEach((button) => {
+    const mode = button.dataset.portionMode;
+    const enabled = mode === "grams" ? supportsGrams : supportsServings;
+    button.disabled = !enabled;
+    button.setAttribute("aria-pressed", selection.mode === mode);
+  });
+
+  if (metaEl) metaEl.textContent = basisLabel;
+  if (mealLabel) mealLabel.textContent = MEAL_LABELS[selection.meal] || "Meal";
+
+  if (portionForm) {
+    portionForm.dataset.entryId = selection.entryId || "";
+  }
+
+  updatePortionPreview();
+}
+
+function renderFoodLibrary() {
+  const list = qs("#food-library-list");
+  if (!list) return;
+  const foods = state.foodItems.slice().sort((a, b) => a.name.localeCompare(b.name));
+  if (!foods.length) {
+    list.innerHTML = "<div class=\"list-item\">No foods yet. Create a custom item to get started.</div>";
+    return;
+  }
+  list.innerHTML = foods
+    .map((food) => {
+      const macros = getFoodBaseMacros(food);
+      const basisLabel = getFoodBasisLabel(food);
+      const actions = [
+        `<button class=\"ghost\" type=\"button\" data-food-favorite=\"${food.id}\">${food.isFavorite ? "Unfavorite" : "Favorite"}</button>`,
+        `<button class=\"ghost\" type=\"button\" data-food-log=\"${food.id}\">Log</button>`
+      ];
+      if (food.isUserCreated) {
+        actions.push(`<button class=\"ghost\" type=\"button\" data-food-edit=\"${food.id}\">Edit</button>`);
+      } else {
+        actions.push(`<button class=\"ghost\" type=\"button\" data-food-duplicate=\"${food.id}\">Duplicate</button>`);
+      }
+      return `
+        <div class=\"list-item food-library-item\" data-food-id=\"${food.id}\">
+          <div>
+            <strong>${food.name}</strong>
+            <div class=\"muted\">${food.brand || "Generic"} | ${formatTag(food.category)} | ${basisLabel}</div>
+            <div class=\"muted\">${formatKcal(macros.kcal)} kcal | ${formatFoodMacroLine(macros)}</div>
+          </div>
+          <div class=\"actions\">${actions.join("")}</div>
+        </div>
+      `;
+    })
+    .join("");
+}
+
+function renderRecipes() {
+  const list = qs("#recipe-list");
+  if (!list) return;
+  const recipes = state.recipes.slice().sort((a, b) => a.name.localeCompare(b.name));
+  if (!recipes.length) {
+    list.innerHTML = "<div class=\"list-item\">No recipes yet. Create one to save a repeat meal.</div>";
+    return;
+  }
+  list.innerHTML = recipes
+    .map((recipe) => {
+      const cached = ensureRecipeCache(recipe);
+      const perServing = cached.perServing;
+      const yieldLabel = recipe.yieldType === "grams" ? `${recipe.yieldAmount} g` : `${recipe.yieldAmount} servings`;
+      const macroLine = formatFoodMacroLine(perServing);
+      return `
+        <div class=\"list-item recipe-item\">
+          <strong>${recipe.name}</strong>
+          <div class=\"muted\">Yield ${yieldLabel} | ${formatKcal(perServing.kcal)} kcal ${recipe.yieldType === "grams" ? "per g" : "per serving"}</div>
+          <div class=\"muted\">${macroLine}</div>
+          <div class=\"actions\">
+            <button class=\"ghost\" type=\"button\" data-recipe-view=\"${recipe.id}\">View</button>
+            <button class=\"ghost\" type=\"button\" data-recipe-log=\"${recipe.id}\">Log</button>
+          </div>
+        </div>
+      `;
+    })
+    .join("");
+}
+
+function renderRecipeDetail() {
+  const nameEl = qs("#recipe-detail-name");
+  if (!nameEl) return;
+  const logButton = qs("#recipe-log");
+  const recipe = getRecipeById(state.activeRecipeId);
+  if (!recipe) {
+    nameEl.textContent = "Recipe";
+    qs("#recipe-detail-meta").textContent = "Select a recipe to view details.";
+    qs("#recipe-detail-ingredients").innerHTML = "<div class=\"list-item\">No recipe selected.</div>";
+    if (logButton) logButton.disabled = true;
+    return;
+  }
+  if (logButton) logButton.disabled = false;
+  const cached = ensureRecipeCache(recipe);
+  nameEl.textContent = recipe.name;
+  const yieldLabel = recipe.yieldType === "grams" ? `${recipe.yieldAmount} g` : `${recipe.yieldAmount} servings`;
+  const perLabel = recipe.yieldType === "grams" ? "per g" : "per serving";
+  qs("#recipe-detail-meta").textContent = `Yield ${yieldLabel} | ${formatKcal(cached.perServing.kcal)} kcal ${perLabel}`;
+  const ingredientList = recipe.ingredients
+    .map((ingredient) => {
+      const food = getFoodItemById(ingredient.foodId);
+      const name = food?.name || "Unknown food";
+      return `<div class=\"list-item\"><strong>${name}</strong><div>${formatMacro(ingredient.grams)} g</div></div>`;
+    })
+    .join("");
+  qs("#recipe-detail-ingredients").innerHTML = ingredientList || "<div class=\"list-item\">No ingredients yet.</div>";
+}
+
+function updateGoalPercentSummary() {
+  const summary = qs("#food-goal-percent");
+  const form = qs("#food-goals-form");
+  if (!summary || !form) return;
+  if (!form.showPercent.checked) {
+    summary.textContent = "";
+    return;
+  }
+  const kcalGoal = Number(form.dailyKcalGoal.value) || 0;
+  const protein = Number(form.proteinGoalG.value) || 0;
+  const carbs = Number(form.carbsGoalG.value) || 0;
+  const fat = Number(form.fatGoalG.value) || 0;
+  const macroCalories = protein * 4 + carbs * 4 + fat * 9;
+  const base = kcalGoal || macroCalories;
+  if (!base) {
+    summary.textContent = "Set calories or macros to view percentages.";
+    return;
+  }
+  const pPct = Math.round(((protein * 4) / base) * 100);
+  const cPct = Math.round(((carbs * 4) / base) * 100);
+  const fPct = Math.round(((fat * 9) / base) * 100);
+  summary.textContent = `Macro split: P ${pPct}% | C ${cPct}% | F ${fPct}%`;
+}
+
+function renderFoodGoals() {
+  const form = qs("#food-goals-form");
+  if (!form || !state.nutritionGoals) return;
+  form.dailyKcalGoal.value = state.nutritionGoals.dailyKcalGoal ?? "";
+  form.proteinGoalG.value = state.nutritionGoals.proteinGoalG ?? "";
+  form.carbsGoalG.value = state.nutritionGoals.carbsGoalG ?? "";
+  form.fatGoalG.value = state.nutritionGoals.fatGoalG ?? "";
+  form.fiberGoalG.value = state.nutritionGoals.fiberGoalG ?? "";
+  form.showPercent.checked = Boolean(state.settings.macroPercentView);
+  updateGoalPercentSummary();
+}
+
+function renderFoodQuick() {
+  const form = qs("#food-quick-form");
+  if (!form) return;
+  if (state.quickEditEntryId) return;
+  form.meal.value = state.foodSearch.meal;
 }
 
 function renderFasting() {
@@ -1419,19 +2396,49 @@ function renderAnalytics() {
   const fastingStats = getFastingStats();
   const workoutStats = getWorkoutStats();
   const weightStats = getWeightStats();
+  const nutritionStats = getNutritionStats();
 
   qs("#analytics-summary").innerHTML = [
     `<div class="metric"><p>Steps</p><h3>${weekStats.total.toLocaleString()}</h3><span>${weekStats.average.toLocaleString()} avg/day | ${weekStats.compliance}% goal compliance | ${weekStats.streak} day streak</span></div>`,
     `<div class="metric"><p>Fasting</p><h3>${fastingStats.adherence}%</h3><span>${fastingStats.average}h avg | ${fastingStats.streak} day streak</span></div>`,
     `<div class="metric"><p>Workouts</p><h3>${workoutStats.sessions}</h3><span>${workoutStats.perWeek} per week | ${workoutStats.volume} sets | ${workoutStats.prs} PRs | ${workoutStats.streak} day streak</span></div>`,
-    `<div class="metric"><p>Weight</p><h3>${weightStats.latest}</h3><span>${weightStats.trend} | Avg ${weightStats.average} | Goal ${weightStats.progress}</span></div>`
+    `<div class="metric"><p>Weight</p><h3>${weightStats.latest}</h3><span>${weightStats.trend} | Avg ${weightStats.average} | Goal ${weightStats.progress}</span></div>`,
+    `<div class="metric"><p>Nutrition</p><h3>${nutritionStats.avgCalories != null ? `${nutritionStats.avgCalories.toLocaleString()} kcal` : "--"}</h3><span>${nutritionStats.proteinAvg != null ? `P ${nutritionStats.proteinAvg}g | C ${nutritionStats.carbsAvg}g | F ${nutritionStats.fatAvg}g` : "No macros logged"}${nutritionStats.compliance != null ? ` | ${nutritionStats.compliance}% goal` : ""}</span></div>`
   ].join("");
 
   qs("#report-card").innerHTML = `
     <p><strong>Weekly report</strong></p>
     <p>Steps: ${weekStats.total.toLocaleString()} | Fasting adherence: ${fastingStats.adherence}%</p>
     <p>Workouts: ${workoutStats.sessions} | Volume: ${workoutStats.volume} sets | Milestones: ${workoutStats.milestones}</p>
+    <p>Nutrition: ${nutritionStats.avgCalories != null ? `${nutritionStats.avgCalories} kcal avg` : "No calories logged"}${nutritionStats.proteinAvg != null ? ` | P ${nutritionStats.proteinAvg}g C ${nutritionStats.carbsAvg}g F ${nutritionStats.fatAvg}g` : ""}</p>
   `;
+
+  const trendsStrip = qs("#trends-steps-strip");
+  const trendsSummary = qs("#trends-steps-summary");
+  const trendsMeta = qs("#trends-steps-meta");
+  if (trendsMeta) {
+    trendsMeta.textContent = `Last 7 days | ${weekStats.compliance}% goal compliance`;
+  }
+  if (trendsStrip && trendsSummary) {
+    const days = [...Array(7).keys()].map((i) => {
+      const date = new Date();
+      date.setDate(date.getDate() - (6 - i));
+      return { key: dateKey(date), label: date.toLocaleDateString(undefined, { weekday: "short" }) };
+    });
+    const totals = days.map((day) =>
+      state.steps.filter((entry) => entry.date === day.key).reduce((sum, entry) => sum + entry.count, 0)
+    );
+    const goal = state.settings.stepsGoal || 0;
+    trendsStrip.innerHTML = days
+      .map((day, index) => {
+        const total = totals[index] || 0;
+        const height = goal ? Math.min(100, Math.round((total / goal) * 100)) : 0;
+        const visibleHeight = total ? Math.max(12, height) : 0;
+        return `<div><span style="height:${visibleHeight}%"></span><small>${day.label}</small></div>`;
+      })
+      .join("");
+    trendsSummary.textContent = `${weekStats.average.toLocaleString()} avg/day | ${weekStats.total.toLocaleString()} total`;
+  }
 }
 
 function renderProfile() {
@@ -1691,6 +2698,40 @@ function getWeightStats() {
   };
 }
 
+function getNutritionStats() {
+  if (!state.foodLogs.length) {
+    return { avgCalories: null, proteinAvg: null, carbsAvg: null, fatAvg: null, compliance: null };
+  }
+  const days = [...Array(7).keys()].map((i) => {
+    const date = new Date();
+    date.setDate(date.getDate() - i);
+    return foodDateKey(date);
+  });
+  const totalsByDay = days.map((day) => getFoodTotals(day));
+  const sum = totalsByDay.reduce((totals, day) => {
+    totals.kcal += day.kcal;
+    totals.protein += day.protein;
+    totals.carbs += day.carbs;
+    totals.fat += day.fat;
+    return totals;
+  }, emptyMacros());
+  const goals = getMacroGoals();
+  const avgCalories = Math.round(sum.kcal / days.length);
+  const proteinAvg = Math.round(sum.protein / days.length);
+  const carbsAvg = Math.round(sum.carbs / days.length);
+  const fatAvg = Math.round(sum.fat / days.length);
+  const compliance = goals.calories
+    ? Math.round(
+        (totalsByDay.filter(
+          (total) => total.kcal >= goals.calories * 0.9 && total.kcal <= goals.calories * 1.1
+        ).length /
+          days.length) *
+          100
+      )
+    : null;
+  return { avgCalories, proteinAvg, carbsAvg, fatAvg, compliance };
+}
+
 function getGoalFocus() {
   if (!state.profile) return "Set your focus in Settings to personalize daily guidance.";
   if (state.profile.goalType === "cut") {
@@ -1718,7 +2759,8 @@ function setRoute(route) {
     dashboard: "today",
     calisthenics: "train",
     analytics: "trends",
-    profile: "settings"
+    profile: "settings",
+    nutrition: "food"
   };
   const nextRoute = legacyMap[route] || route;
   if (nextRoute === "exercise" && !activeExerciseId) {
@@ -1797,7 +2839,18 @@ function initActions() {
   });
 
   qsa("[data-route-jump]").forEach((button) => {
-    button.addEventListener("click", () => setRoute(button.dataset.routeJump));
+    button.addEventListener("click", () => {
+      const target = button.dataset.routeJump;
+      if (target === "food-quick") {
+        state.quickEditEntryId = null;
+        const form = qs("#food-quick-form");
+        if (form) {
+          form.reset();
+          form.meal.value = state.foodSearch.meal;
+        }
+      }
+      setRoute(target);
+    });
   });
 
   const nudges = qs("#today-nudges");
@@ -1809,6 +2862,10 @@ function initActions() {
       if (action === "log-weight") {
         setRoute("weight");
         qs("#weight-form input[name='weight']").focus();
+      }
+      if (action === "log-food") {
+        setRoute("food-search");
+        qs("#food-search-input").focus();
       }
       if (action === "log-steps") {
         setRoute("steps");
@@ -1912,6 +2969,190 @@ function initActions() {
       handleStartWorkout({ exerciseId: activeExerciseId, actionLabel: label });
     });
   }
+
+  qsa("[data-add-meal]").forEach((button) => {
+    button.addEventListener("click", () => {
+      state.foodSearch.meal = normalizeMealType(button.dataset.addMeal);
+      setRoute("food-search");
+      renderFoodSearch();
+      qs("#food-search-input").focus();
+    });
+  });
+
+  const dismissFoodDisclaimer = qs("#dismiss-food-disclaimer");
+  if (dismissFoodDisclaimer) {
+    dismissFoodDisclaimer.addEventListener("click", async () => {
+      state.settings.foodDisclaimerDismissed = true;
+      await put("settings", state.settings);
+      renderFood();
+    });
+  }
+
+  const foodSearchTabs = qs("#food-search-tabs");
+  if (foodSearchTabs) {
+    foodSearchTabs.addEventListener("click", (event) => {
+      const button = event.target.closest("[data-food-tab]");
+      if (!button) return;
+      state.foodSearch.tab = button.dataset.foodTab;
+      renderFoodSearch();
+    });
+  }
+
+  const foodSearchInput = qs("#food-search-input");
+  if (foodSearchInput) {
+    foodSearchInput.addEventListener("input", () => {
+      state.foodSearch.query = foodSearchInput.value;
+      renderFoodSearch();
+    });
+  }
+
+  const foodCategoryFilter = qs("#food-category-filter");
+  if (foodCategoryFilter) {
+    foodCategoryFilter.addEventListener("change", () => {
+      state.foodSearch.category = foodCategoryFilter.value;
+      renderFoodSearch();
+    });
+  }
+
+  const foodMealSelect = qs("#food-meal-select");
+  if (foodMealSelect) {
+    foodMealSelect.addEventListener("change", () => {
+      state.foodSearch.meal = normalizeMealType(foodMealSelect.value);
+      renderFoodSearch();
+    });
+  }
+
+  const foodSearchResults = qs("#food-search-results");
+  if (foodSearchResults) {
+    foodSearchResults.addEventListener("click", (event) => {
+      const favorite = event.target.closest("[data-food-favorite]");
+      if (favorite) {
+        toggleFoodFavorite(favorite.dataset.foodFavorite);
+        return;
+      }
+      const card = event.target.closest("[data-food-id]");
+      if (!card) return;
+      startFoodPortion("food", card.dataset.foodId, state.foodSearch.meal);
+    });
+  }
+
+  const mealLists = ["#meal-breakfast-list", "#meal-lunch-list", "#meal-dinner-list", "#meal-snack-list"];
+  mealLists.forEach((selector) => {
+    const list = qs(selector);
+    if (!list) return;
+    list.addEventListener("click", (event) => {
+      const deleteButton = event.target.closest("[data-food-delete]");
+      if (deleteButton) {
+        handleDeleteFoodLog(deleteButton.dataset.foodDelete);
+        return;
+      }
+      const row = event.target.closest("[data-food-entry-id]");
+      if (!row) return;
+      handleEditFoodLog(row.dataset.foodEntryId);
+    });
+    list.addEventListener("pointerdown", handleFoodSwipeStart);
+    list.addEventListener("pointerup", handleFoodSwipeEnd);
+    list.addEventListener("pointercancel", handleFoodSwipeEnd);
+  });
+
+  const foodLibraryList = qs("#food-library-list");
+  if (foodLibraryList) {
+    foodLibraryList.addEventListener("click", (event) => {
+      const favorite = event.target.closest("[data-food-favorite]");
+      if (favorite) {
+        toggleFoodFavorite(favorite.dataset.foodFavorite);
+        return;
+      }
+      const edit = event.target.closest("[data-food-edit]");
+      if (edit) {
+        const food = getFoodItemById(edit.dataset.foodEdit);
+        if (food) openFoodEditor(food);
+        return;
+      }
+      const duplicate = event.target.closest("[data-food-duplicate]");
+      if (duplicate) {
+        const food = getFoodItemById(duplicate.dataset.foodDuplicate);
+        if (food) duplicateFoodItem(food);
+        return;
+      }
+      const log = event.target.closest("[data-food-log]");
+      if (log) {
+        startFoodPortion("food", log.dataset.foodLog, state.foodSearch.meal);
+      }
+    });
+  }
+
+  const foodCreate = qs("#food-create");
+  if (foodCreate) {
+    foodCreate.addEventListener("click", () => openFoodEditor());
+  }
+
+  const recipeCreate = qs("#recipe-create");
+  if (recipeCreate) {
+    recipeCreate.addEventListener("click", () => {
+      startRecipeDraft();
+      setRoute("food-recipe-new");
+      renderRecipeDraft();
+    });
+  }
+
+  const recipeList = qs("#recipe-list");
+  if (recipeList) {
+    recipeList.addEventListener("click", (event) => {
+      const view = event.target.closest("[data-recipe-view]");
+      if (view) {
+        state.activeRecipeId = view.dataset.recipeView;
+        setRoute("food-recipe");
+        renderRecipeDetail();
+        return;
+      }
+      const log = event.target.closest("[data-recipe-log]");
+      if (log) {
+        startFoodPortion("recipe", log.dataset.recipeLog, state.foodSearch.meal);
+      }
+    });
+  }
+
+  const recipeLog = qs("#recipe-log");
+  if (recipeLog) {
+    recipeLog.addEventListener("click", () => {
+      if (!state.activeRecipeId) return;
+      startFoodPortion("recipe", state.activeRecipeId, state.foodSearch.meal);
+    });
+  }
+
+  const recipeAdd = qs("#recipe-add-ingredient");
+  if (recipeAdd) {
+    recipeAdd.addEventListener("click", () => {
+      handleAddRecipeIngredient();
+    });
+  }
+
+  const recipeIngredientList = qs("#recipe-ingredient-list");
+  if (recipeIngredientList) {
+    recipeIngredientList.addEventListener("click", (event) => {
+      const removeButton = event.target.closest("[data-remove-ingredient]");
+      if (!removeButton) return;
+      const index = Number(removeButton.dataset.removeIngredient);
+      state.recipeDraft.ingredients.splice(index, 1);
+      renderRecipeDraft();
+    });
+  }
+
+  const portionMode = qs("#portion-mode");
+  if (portionMode) {
+    portionMode.addEventListener("click", (event) => {
+      const button = event.target.closest("[data-portion-mode]");
+      if (!button || button.disabled) return;
+      state.foodPortion.mode = button.dataset.portionMode;
+      renderFoodPortion();
+    });
+  }
+
+  const foodGoalsForm = qs("#food-goals-form");
+  if (foodGoalsForm) {
+    foodGoalsForm.addEventListener("input", updateGoalPercentSummary);
+  }
 }
 
 function initFab() {
@@ -1971,6 +3212,16 @@ function initFab() {
   menu.addEventListener("click", (event) => {
     const action = event.target.closest("[data-fab-action]");
     if (!action) return;
+    if (action.dataset.fabAction === "quick-add-food") {
+      setRoute("food-quick");
+      state.quickEditEntryId = null;
+      const form = qs("#food-quick-form");
+      if (form) {
+        form.reset();
+        form.meal.value = state.foodSearch.meal;
+      }
+      qs("#food-quick-form input[name='kcal']").focus();
+    }
     if (action.dataset.fabAction === "log-weight") {
       setRoute("weight");
       qs("#weight-form input[name='weight']").focus();
@@ -2043,6 +3294,172 @@ function initForms() {
     }
     render();
   });
+
+  const foodQuickForm = qs("#food-quick-form");
+  if (foodQuickForm) {
+    foodQuickForm.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      const form = new FormData(foodQuickForm);
+      const now = new Date();
+      const meal = normalizeMealType(form.get("meal"));
+      const existing = state.quickEditEntryId
+        ? state.foodLogs.find((entry) => entry.id === state.quickEditEntryId)
+        : null;
+      await put("foodLogs", {
+        id: existing?.id || uuid(),
+        dateLocal: existing?.dateLocal || foodDateKey(now),
+        datetime: existing?.datetime || now.toISOString(),
+        mealType: meal,
+        sourceType: "quick",
+        sourceId: null,
+        amountGrams: null,
+        amountServings: null,
+        computedMacros: {
+          kcal: Number(form.get("kcal")) || 0,
+          protein: Number(form.get("protein")) || 0,
+          carbs: Number(form.get("carbs")) || 0,
+          fat: Number(form.get("fat")) || 0,
+          fiber: Number(form.get("fiber")) || 0
+        },
+        notes: form.get("notes") || ""
+      });
+      state.foodLogs = await getAll("foodLogs");
+      state.foodSearch.meal = meal;
+      state.quickEditEntryId = null;
+      foodQuickForm.reset();
+      foodQuickForm.meal.value = meal;
+      render();
+      setRoute("food");
+    });
+  }
+
+  const portionForm = qs("#portion-form");
+  if (portionForm) {
+    const amountInput = portionForm.querySelector("input[name=\"amount\"]");
+    if (amountInput) {
+      amountInput.addEventListener("input", updatePortionPreview);
+    }
+    portionForm.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      const form = new FormData(portionForm);
+      const amount = Number(form.get("amount")) || 0;
+      if (!amount) return;
+      const selection = state.foodPortion;
+      const now = new Date();
+      const entryId = selection.entryId;
+      const existing = entryId ? state.foodLogs.find((entry) => entry.id === entryId) : null;
+      let computed = emptyMacros();
+      if (selection.sourceType === "recipe") {
+        const recipe = getRecipeById(selection.sourceId);
+        const cached = ensureRecipeCache(recipe);
+        computed = scaleMacros(cached.perServing, amount);
+      } else {
+        const food = getFoodItemById(selection.sourceId);
+        if (food?.nutritionBasis === "perServing" && selection.mode === "grams" && !food.perServing?.servingGrams) {
+          alert("This food needs a serving size to log grams.");
+          return;
+        }
+        computed = computeFoodMacros(food, {
+          grams: selection.mode === "grams" ? amount : null,
+          servings: selection.mode === "servings" ? amount : null
+        });
+        if (food) {
+          food.lastUsedAt = now.toISOString();
+          await put("foodItems", food);
+          state.foodItems = await getAll("foodItems");
+        }
+      }
+
+      await put("foodLogs", {
+        id: existing?.id || uuid(),
+        dateLocal: existing?.dateLocal || foodDateKey(now),
+        datetime: existing?.datetime || now.toISOString(),
+        mealType: selection.meal,
+        sourceType: selection.sourceType,
+        sourceId: selection.sourceId,
+        amountGrams: selection.mode === "grams" ? amount : null,
+        amountServings: selection.mode === "servings" ? amount : null,
+        computedMacros: computed,
+        notes: existing?.notes || ""
+      });
+      state.foodLogs = await getAll("foodLogs");
+      state.foodSearch.meal = selection.meal;
+      state.foodPortion.entryId = null;
+      portionForm.reset();
+      render();
+      setRoute("food");
+    });
+  }
+
+  const foodGoalsForm = qs("#food-goals-form");
+  if (foodGoalsForm) {
+    foodGoalsForm.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      const form = new FormData(foodGoalsForm);
+      const goals = {
+        id: "default",
+        dailyKcalGoal: Number(form.get("dailyKcalGoal")) || 0,
+        proteinGoalG: Number(form.get("proteinGoalG")) || 0,
+        carbsGoalG: Number(form.get("carbsGoalG")) || 0,
+        fatGoalG: Number(form.get("fatGoalG")) || 0,
+        fiberGoalG: Number(form.get("fiberGoalG")) || 0,
+        updatedAt: new Date().toISOString()
+      };
+      state.nutritionGoals = goals;
+      await put("nutritionGoals", goals);
+      state.settings.macroPercentView = form.get("showPercent") === "on";
+      state.settings.calorieGoal = goals.dailyKcalGoal;
+      state.settings.proteinGoal = goals.proteinGoalG;
+      state.settings.carbGoal = goals.carbsGoalG;
+      state.settings.fatGoal = goals.fatGoalG;
+      await put("settings", state.settings);
+      render();
+      setRoute("food");
+    });
+  }
+
+  const recipeForm = qs("#recipe-form");
+  if (recipeForm) {
+    recipeForm.addEventListener("input", renderRecipeDraft);
+    recipeForm.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      const form = new FormData(recipeForm);
+      const name = String(form.get("name") || "").trim();
+      const yieldType = form.get("yieldType");
+      const yieldAmount = Number(form.get("yieldAmount")) || 0;
+      if (!name) return;
+      if (!state.recipeDraft.ingredients.length) {
+        alert("Add at least one ingredient.");
+        return;
+      }
+      if (!yieldAmount) {
+        alert("Set a yield amount.");
+        return;
+      }
+      const now = new Date().toISOString();
+      const total = computeRecipeTotals({ ingredients: state.recipeDraft.ingredients });
+      const perServing = computeRecipePerServing({ yieldAmount }, total);
+      const recipe = {
+        id: uuid(),
+        name,
+        ingredients: state.recipeDraft.ingredients.slice(),
+        yieldType,
+        yieldAmount,
+        computedMacrosTotal: total,
+        computedMacrosPerServing: perServing,
+        createdAt: now,
+        updatedAt: now
+      };
+      await put("recipes", recipe);
+      state.recipes = await getAll("recipes");
+      state.activeRecipeId = recipe.id;
+      state.recipeDraft = { ingredients: [] };
+      recipeForm.reset();
+      renderRecipes();
+      setRoute("food-recipe");
+      renderRecipeDetail();
+    });
+  }
 
   const settingsForm = qs("#settings-form");
   settingsForm.addEventListener("submit", async (event) => {
@@ -2588,11 +4005,404 @@ function closeModal() {
   qs("#modal-content").innerHTML = "";
 }
 
+function showToast(message, options = {}) {
+  const toast = qs("#app-toast");
+  if (!toast) return;
+  const { actionLabel, onAction } = options;
+  toast.innerHTML = actionLabel
+    ? `<span>${message}</span><button class="ghost" type="button" data-toast-action>${actionLabel}</button>`
+    : `<span>${message}</span>`;
+  toast.hidden = false;
+  if (toastTimer) clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => {
+    toast.hidden = true;
+    toast.innerHTML = "";
+  }, 4000);
+  if (actionLabel && onAction) {
+    const button = toast.querySelector("[data-toast-action]");
+    if (button) {
+      button.addEventListener("click", () => {
+        onAction();
+        toast.hidden = true;
+        toast.innerHTML = "";
+      });
+    }
+  }
+}
+
+async function handleDeleteFoodLog(entryId) {
+  const entry = state.foodLogs.find((item) => item.id === entryId);
+  if (!entry) return;
+  await remove("foodLogs", entryId);
+  state.foodLogs = state.foodLogs.filter((item) => item.id !== entryId);
+  render();
+  showToast("Entry deleted.", {
+    actionLabel: "Undo",
+    onAction: async () => {
+      await put("foodLogs", entry);
+      state.foodLogs = await getAll("foodLogs");
+      render();
+    }
+  });
+}
+
+function startFoodPortion(sourceType, sourceId, meal, entry) {
+  if (!sourceId) return;
+  state.quickEditEntryId = null;
+  const normalizedMeal = normalizeMealType(meal || "breakfast");
+  let mode = "grams";
+  if (entry?.amountServings) mode = "servings";
+  if (!entry) {
+    if (sourceType === "food") {
+      const food = getFoodItemById(sourceId);
+      if (food?.nutritionBasis === "perServing") mode = "servings";
+    }
+    if (sourceType === "recipe") {
+      const recipe = getRecipeById(sourceId);
+      if (recipe?.yieldType === "servings") mode = "servings";
+      if (recipe?.yieldType === "grams") mode = "grams";
+    }
+  }
+  state.foodPortion = {
+    sourceType,
+    sourceId,
+    meal: normalizedMeal,
+    mode,
+    entryId: entry?.id || null
+  };
+  state.foodSearch.meal = normalizedMeal;
+  const portionForm = qs("#portion-form");
+  if (portionForm) {
+    const amountInput = portionForm.querySelector("input[name=\"amount\"]");
+    if (amountInput) {
+      amountInput.value = entry?.amountGrams || entry?.amountServings || "";
+    }
+  }
+  setRoute("food-portion");
+  renderFoodPortion();
+  const amountInput = qs("#portion-form input[name='amount']");
+  if (amountInput) amountInput.focus();
+}
+
+function handleEditFoodLog(entryId) {
+  const entry = state.foodLogs.find((item) => item.id === entryId);
+  if (!entry) return;
+  if (entry.sourceType === "quick") {
+    state.quickEditEntryId = entry.id;
+    state.foodSearch.meal = normalizeMealType(entry.mealType);
+    const form = qs("#food-quick-form");
+    if (form) {
+      form.meal.value = normalizeMealType(entry.mealType);
+      form.kcal.value = entry.computedMacros?.kcal ?? "";
+      form.protein.value = entry.computedMacros?.protein ?? "";
+      form.carbs.value = entry.computedMacros?.carbs ?? "";
+      form.fat.value = entry.computedMacros?.fat ?? "";
+      form.fiber.value = entry.computedMacros?.fiber ?? "";
+      if (form.notes) form.notes.value = entry.notes || "";
+    }
+    setRoute("food-quick");
+    return;
+  }
+  startFoodPortion(entry.sourceType, entry.sourceId, entry.mealType, entry);
+}
+
+async function toggleFoodFavorite(foodId) {
+  const food = getFoodItemById(foodId);
+  if (!food) return;
+  food.isFavorite = !food.isFavorite;
+  food.updatedAt = new Date().toISOString();
+  await put("foodItems", food);
+  state.foodItems = await getAll("foodItems");
+  renderFoodSearch();
+  renderFoodLibrary();
+}
+
+function openFoodEditor(existing, options = {}) {
+  const forceCreate = Boolean(options.forceCreate);
+  const isEditing = Boolean(existing?.id) && !forceCreate;
+  const basis = existing?.nutritionBasis || "per100g";
+  const per100g = existing?.per100g || {};
+  const perServing = existing?.perServing || {};
+  const content = `
+    <form id="modal-form" class="form-grid">
+      <label>Name<input type="text" name="name" value="${existing?.name || ""}" required /></label>
+      <label>Brand<input type="text" name="brand" value="${existing?.brand || ""}" /></label>
+      <label>Category
+        <select name="category">
+          <option value="protein">Protein</option>
+          <option value="carb">Carb</option>
+          <option value="fat">Fat</option>
+          <option value="produce">Produce</option>
+          <option value="mixed">Mixed</option>
+        </select>
+      </label>
+      <label>Nutrition basis
+        <select name="basis">
+          <option value="per100g">Per 100g</option>
+          <option value="perServing">Per serving</option>
+        </select>
+      </label>
+      <p class="muted" id="food-basis-hint">Values per 100g.</p>
+      <label>Serving grams (optional)<input type="number" name="servingGrams" min="0" step="1" value="${perServing.servingGrams ?? ""}" /></label>
+      <label>Calories<input type="number" name="kcal" min="0" step="1" value="${per100g.kcal ?? perServing.kcal ?? ""}" required /></label>
+      <label>Protein (g)<input type="number" name="protein" min="0" step="0.1" value="${per100g.protein ?? perServing.protein ?? ""}" /></label>
+      <label>Carbs (g)<input type="number" name="carbs" min="0" step="0.1" value="${per100g.carbs ?? perServing.carbs ?? ""}" /></label>
+      <label>Fat (g)<input type="number" name="fat" min="0" step="0.1" value="${per100g.fat ?? perServing.fat ?? ""}" /></label>
+      <label>Fiber (g)<input type="number" name="fiber" min="0" step="0.1" value="${per100g.fiber ?? perServing.fiber ?? ""}" /></label>
+      <button class="primary" type="submit">${isEditing ? "Save changes" : "Save food"}</button>
+      <button class="ghost" type="button" data-close>Cancel</button>
+    </form>
+  `;
+  const modal = showModal(isEditing ? "Edit food" : "Create food", content);
+  const basisSelect = modal.form.querySelector("select[name='basis']");
+  const categorySelect = modal.form.querySelector("select[name='category']");
+  const hint = modal.form.querySelector("#food-basis-hint");
+  if (basisSelect) basisSelect.value = basis;
+  if (categorySelect) categorySelect.value = existing?.category || "mixed";
+
+  const updateHint = () => {
+    if (!hint || !basisSelect) return;
+    hint.textContent = basisSelect.value === "per100g" ? "Values per 100g." : "Values per serving.";
+  };
+  updateHint();
+  if (basisSelect) {
+    basisSelect.addEventListener("change", updateHint);
+  }
+
+  modal.form.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const form = new FormData(modal.form);
+    const nutritionBasis = form.get("basis");
+    const now = new Date().toISOString();
+    const record = {
+      id: isEditing ? existing.id : uuid(),
+      name: String(form.get("name") || "").trim(),
+      brand: String(form.get("brand") || "").trim(),
+      category: form.get("category"),
+      nutritionBasis,
+      per100g: nutritionBasis === "per100g"
+        ? {
+            kcal: Number(form.get("kcal")) || 0,
+            protein: Number(form.get("protein")) || 0,
+            carbs: Number(form.get("carbs")) || 0,
+            fat: Number(form.get("fat")) || 0,
+            fiber: Number(form.get("fiber")) || 0
+          }
+        : existing?.per100g || {},
+      perServing: nutritionBasis === "perServing"
+        ? {
+            servingGrams: Number(form.get("servingGrams")) || null,
+            kcal: Number(form.get("kcal")) || 0,
+            protein: Number(form.get("protein")) || 0,
+            carbs: Number(form.get("carbs")) || 0,
+            fat: Number(form.get("fat")) || 0,
+            fiber: Number(form.get("fiber")) || 0
+          }
+        : existing?.perServing || {},
+      isUserCreated: existing?.isUserCreated ?? true,
+      isFavorite: existing?.isFavorite ?? false,
+      lastUsedAt: existing?.lastUsedAt || null,
+      createdAt: existing?.createdAt || now,
+      updatedAt: now
+    };
+    if (!record.name) return;
+    await put("foodItems", record);
+    state.foodItems = await getAll("foodItems");
+    closeModal();
+    renderFoodSearch();
+    renderFoodLibrary();
+  });
+}
+
+function duplicateFoodItem(food) {
+  if (!food) return;
+  const copy = {
+    ...food,
+    id: null,
+    name: `${food.name} copy`,
+    isUserCreated: true,
+    isFavorite: false
+  };
+  openFoodEditor(copy, { forceCreate: true });
+}
+
+function startRecipeDraft() {
+  state.recipeDraft = { ingredients: [] };
+  state.activeRecipeId = null;
+  const form = qs("#recipe-form");
+  if (form) {
+    form.reset();
+    form.yieldType.value = "servings";
+    form.yieldAmount.value = 1;
+  }
+}
+
+function renderRecipeDraft() {
+  const list = qs("#recipe-ingredient-list");
+  const preview = qs("#recipe-macro-preview");
+  const select = qs("#recipe-food-select");
+  const form = qs("#recipe-form");
+  if (select) {
+    const current = select.value;
+    select.innerHTML = state.foodItems
+      .slice()
+      .sort((a, b) => a.name.localeCompare(b.name))
+      .map((food) => `<option value="${food.id}">${food.name}</option>`)
+      .join("");
+    if (current) {
+      select.value = current;
+    }
+  }
+
+  if (list) {
+    if (!state.recipeDraft.ingredients.length) {
+      list.innerHTML = "<div class=\"list-item\">No ingredients yet.</div>";
+    } else {
+      list.innerHTML = state.recipeDraft.ingredients
+        .map((ingredient, index) => {
+          const food = getFoodItemById(ingredient.foodId);
+          const name = food?.name || "Unknown food";
+          return `<div class="list-item"><strong>${name}</strong><div>${formatMacro(ingredient.grams)} g</div><button class="ghost" type="button" data-remove-ingredient="${index}">Remove</button></div>`;
+        })
+        .join("");
+    }
+  }
+
+  if (preview && form) {
+    const yieldAmount = Number(form.yieldAmount.value) || 0;
+    const yieldType = form.yieldType.value || "servings";
+    const total = computeRecipeTotals({ ingredients: state.recipeDraft.ingredients });
+    const per = yieldAmount ? scaleMacros(total, 1 / yieldAmount) : emptyMacros();
+    const perLabel = yieldType === "grams" ? "per g" : "per serving";
+    preview.innerHTML = `
+      <strong>Total ${formatKcal(total.kcal)} kcal</strong>
+      <div class="muted">${formatFoodMacroLine(total)}</div>
+      <div class="muted">Per ${perLabel}: ${formatKcal(per.kcal)} kcal | ${formatFoodMacroLine(per)}</div>
+    `;
+  }
+}
+
+function handleAddRecipeIngredient() {
+  const form = qs("#recipe-form");
+  if (!form) return;
+  const foodField = form.querySelector("[name=\"food\"]");
+  const gramsField = form.querySelector("[name=\"grams\"]");
+  if (!foodField || !gramsField) return;
+  const foodId = foodField.value;
+  const grams = Number(gramsField.value) || 0;
+  if (!foodId || !grams) return;
+  const food = getFoodItemById(foodId);
+  if (food?.nutritionBasis === "perServing" && !food.perServing?.servingGrams) {
+    alert("Add serving grams to this food before using it in recipes.");
+    return;
+  }
+  state.recipeDraft.ingredients.push({ foodId, grams });
+  gramsField.value = "";
+  renderRecipeDraft();
+}
+
+function ensureRecipeCache(recipe) {
+  if (!recipe) return { total: emptyMacros(), perServing: emptyMacros() };
+  if (!recipe.computedMacrosTotal || !recipe.computedMacrosPerServing) {
+    const total = computeRecipeTotals(recipe);
+    const perServing = computeRecipePerServing(recipe, total);
+    recipe.computedMacrosTotal = total;
+    recipe.computedMacrosPerServing = perServing;
+    recipe.updatedAt = new Date().toISOString();
+    put("recipes", recipe);
+    return { total, perServing };
+  }
+  return { total: recipe.computedMacrosTotal, perServing: recipe.computedMacrosPerServing };
+}
+
+function updatePortionPreview() {
+  const preview = qs("#portion-preview");
+  const form = qs("#portion-form");
+  if (!preview || !form) return;
+  const amount = Number(form.querySelector("input[name=\"amount\"]")?.value) || 0;
+  if (!amount) {
+    preview.innerHTML = "<div class=\"muted\">Enter an amount to preview macros.</div>";
+    return;
+  }
+  const selection = state.foodPortion;
+  let macros = emptyMacros();
+  if (selection.sourceType === "recipe") {
+    const recipe = getRecipeById(selection.sourceId);
+    const cached = ensureRecipeCache(recipe);
+    macros = scaleMacros(cached.perServing, amount);
+  } else {
+    const food = getFoodItemById(selection.sourceId);
+    if (food?.nutritionBasis === "perServing" && selection.mode === "grams" && !food.perServing?.servingGrams) {
+      preview.innerHTML = "<div class=\"muted\">Set serving grams to use grams.</div>";
+      return;
+    }
+    macros = computeFoodMacros(food, {
+      grams: selection.mode === "grams" ? amount : null,
+      servings: selection.mode === "servings" ? amount : null
+    });
+  }
+  preview.innerHTML = `
+    <strong>${formatKcal(macros.kcal)} kcal</strong>
+    <div class="muted">${formatFoodMacroLine(macros)}</div>
+  `;
+}
+
+function handleFoodSwipeStart(event) {
+  const row = event.target.closest("[data-food-entry-id]");
+  if (!row) return;
+  foodSwipeStart.set(row.dataset.foodEntryId, { x: event.clientX, y: event.clientY });
+}
+
+function handleFoodSwipeEnd(event) {
+  const row = event.target.closest("[data-food-entry-id]");
+  if (!row) return;
+  const start = foodSwipeStart.get(row.dataset.foodEntryId);
+  if (!start) return;
+  const dx = event.clientX - start.x;
+  const dy = event.clientY - start.y;
+  if (Math.abs(dx) > 80 && Math.abs(dy) < 40) {
+    handleDeleteFoodLog(row.dataset.foodEntryId);
+  }
+  foodSwipeStart.delete(row.dataset.foodEntryId);
+}
+
 async function exportDataset(dataset) {
   const exporter = {
     steps: { data: state.steps, headers: ["date", "count", "source"] },
     fasting: { data: state.fastingSessions, headers: ["startAt", "endAt", "elapsedMs", "modeId", "status"] },
     weight: { data: state.weightEntries, headers: ["at", "weightKg", "notes"] },
+    food: {
+      data: state.foodLogs.map((entry) => ({
+        dateLocal: entry.dateLocal,
+        datetime: entry.datetime,
+        mealType: entry.mealType,
+        sourceType: entry.sourceType,
+        sourceName: getFoodLogSourceName(entry),
+        amountGrams: entry.amountGrams,
+        amountServings: entry.amountServings,
+        kcal: entry.computedMacros?.kcal ?? 0,
+        protein: entry.computedMacros?.protein ?? 0,
+        carbs: entry.computedMacros?.carbs ?? 0,
+        fat: entry.computedMacros?.fat ?? 0,
+        fiber: entry.computedMacros?.fiber ?? 0,
+        notes: entry.notes || ""
+      })),
+      headers: [
+        "dateLocal",
+        "datetime",
+        "mealType",
+        "sourceType",
+        "sourceName",
+        "amountGrams",
+        "amountServings",
+        "kcal",
+        "protein",
+        "carbs",
+        "fat",
+        "fiber",
+        "notes"
+      ]
+    },
     workouts: { data: state.workouts, headers: ["startedAt", "endedAt", "name", "notes"] }
   };
   const config = exporter[dataset];
@@ -2604,6 +4414,7 @@ async function exportAll() {
   await exportDataset("steps");
   await exportDataset("fasting");
   await exportDataset("weight");
+  await exportDataset("food");
   await exportDataset("workouts");
 }
 
@@ -2612,6 +4423,7 @@ function exportReport() {
   const fastingStats = getFastingStats();
   const workoutStats = getWorkoutStats();
   const weightStats = getWeightStats();
+  const nutritionStats = getNutritionStats();
   const rows = [
     {
       steps_total: weekStats.total,
@@ -2619,7 +4431,11 @@ function exportReport() {
       fasting_adherence: fastingStats.adherence,
       fasting_avg_hours: fastingStats.average,
       workouts: workoutStats.sessions,
-      weight_trend: weightStats.trend
+      weight_trend: weightStats.trend,
+      calories_avg: nutritionStats.avgCalories,
+      protein_avg: nutritionStats.proteinAvg,
+      carbs_avg: nutritionStats.carbsAvg,
+      fat_avg: nutritionStats.fatAvg
     }
   ];
   downloadCSV("weekly-report.csv", rows, Object.keys(rows[0]));
@@ -2778,6 +4594,9 @@ function init() {
       setupInstall();
       setupShare();
       render();
+      requestAnimationFrame(() => {
+        seedFoodDatabase();
+      });
       startReminderLoop();
     });
 }

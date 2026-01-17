@@ -412,6 +412,133 @@ p {
   gap: var(--space-3);
 }
 
+.macro-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: var(--space-3);
+}
+
+.macro-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-top: var(--space-2);
+}
+
+.macro-pill {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-pill);
+  padding: 4px 10px;
+  font-size: var(--font-size-xs);
+}
+
+:root[data-theme="light"] .macro-pill {
+  background: rgba(24, 30, 34, 0.08);
+}
+
+.macro-progress {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: var(--space-3);
+  margin-top: var(--space-3);
+}
+
+.macro-card {
+  background: var(--surface-2);
+  padding: var(--space-3);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+}
+
+.macro-card p {
+  margin: 0 0 var(--space-1);
+  color: var(--muted);
+  font-size: var(--font-size-xs);
+}
+
+.macro-card strong {
+  display: block;
+  font-size: 1.1rem;
+  margin-bottom: 2px;
+}
+
+.macro-card span {
+  color: var(--muted);
+  font-size: var(--font-size-xs);
+}
+
+.macro-card .progress {
+  margin-top: var(--space-2);
+}
+
+.macro-preview {
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: var(--space-3);
+  display: grid;
+  gap: var(--space-2);
+}
+
+.food-entry {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  gap: var(--space-2);
+  align-items: center;
+  cursor: pointer;
+}
+
+.food-entry-meta {
+  display: grid;
+  gap: 2px;
+  text-align: right;
+}
+
+.food-entry-delete {
+  min-height: 32px;
+  padding: 0 10px;
+  font-size: var(--font-size-xs);
+  margin-top: 0;
+}
+
+.food-result,
+.food-library-item,
+.recipe-item {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: var(--space-2);
+  align-items: center;
+}
+
+.food-result button,
+.food-library-item .actions button,
+.recipe-item .actions button {
+  margin-top: 0;
+}
+
+.toast {
+  position: fixed;
+  left: 50%;
+  transform: translateX(-50%);
+  bottom: calc(var(--nav-height) + 14px + env(safe-area-inset-bottom));
+  background: var(--surface);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-pill);
+  padding: 10px 16px;
+  display: flex;
+  gap: var(--space-2);
+  align-items: center;
+  z-index: 40;
+  box-shadow: var(--shadow-2);
+}
+
+.toast button {
+  min-height: 32px;
+  padding: 0 10px;
+}
+
 .status-dot {
   display: inline-block;
   width: 8px;
@@ -1087,6 +1214,18 @@ textarea {
 
   .fab-stack {
     right: 12px;
+  }
+
+  .food-entry {
+    grid-template-columns: 1fr;
+  }
+
+  .food-entry-meta {
+    text-align: left;
+  }
+
+  .food-entry-delete {
+    justify-self: flex-start;
   }
 }
 

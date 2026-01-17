@@ -1,5 +1,5 @@
 ﻿const DB_NAME = "grit-fitness";
-const DB_VERSION = 2;
+const DB_VERSION = 4;
 
 const STORES = {
   profiles: { keyPath: "id" },
@@ -8,6 +8,14 @@ const STORES = {
   fastingSessions: { keyPath: "id", indexes: ["status", "startAt"] },
   fastingModes: { keyPath: "id", indexes: ["type"] },
   weightEntries: { keyPath: "id", indexes: ["at"] },
+  nutritionEntries: { keyPath: "id", indexes: ["date", "meal"] },
+  foodItems: { keyPath: "id", indexes: ["name", "brand", "category", "isFavorite", "lastUsedAt"] },
+  recipes: { keyPath: "id", indexes: ["name"] },
+  foodLogs: {
+    keyPath: "id",
+    indexes: ["dateLocal", { name: "dateMeal", keyPath: ["dateLocal", "mealType"] }]
+  },
+  nutritionGoals: { keyPath: "id", indexes: ["updatedAt"] },
   exercises: { keyPath: "id", indexes: ["category"] },
   workoutTemplates: { keyPath: "id", indexes: ["name"] },
   workouts: { keyPath: "id", indexes: ["startedAt"] },
@@ -29,13 +37,21 @@ function openDB() {
       Object.entries(STORES).forEach(([name, config]) => {
         if (!db.objectStoreNames.contains(name)) {
           const store = db.createObjectStore(name, { keyPath: config.keyPath });
-          (config.indexes || []).forEach((index) => store.createIndex(index, index));
+          (config.indexes || []).forEach((index) => {
+            const indexName = typeof index === "string" ? index : index.name;
+            const keyPath = typeof index === "string" ? index : index.keyPath;
+            const options = typeof index === "string" ? undefined : index.options;
+            store.createIndex(indexName, keyPath, options);
+          });
           return;
         }
         const store = tx.objectStore(name);
         (config.indexes || []).forEach((index) => {
-          if (!store.indexNames.contains(index)) {
-            store.createIndex(index, index);
+          const indexName = typeof index === "string" ? index : index.name;
+          const keyPath = typeof index === "string" ? index : index.keyPath;
+          const options = typeof index === "string" ? undefined : index.options;
+          if (!store.indexNames.contains(indexName)) {
+            store.createIndex(indexName, keyPath, options);
           }
         });
       });
